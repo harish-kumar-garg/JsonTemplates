@@ -1,0 +1,58 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters" : {
+		"userName" : {
+			"type" : "string"
+		},
+		"password" : {
+			"type" : "secureString"
+		},
+		"location" : {
+			"type" : "string",
+			"defaultValue" : "Southeast Asia",
+			"allowedValues" : [
+				"Southeast Asia",
+				"West US",
+				"East US"
+			]
+		},
+		"addressPrefix": {
+			"type": "string",
+			"defaultValue": "10.0.0.0/16"
+		},
+		"subnetPrefix1": {
+			"type": "string",
+			"defaultValue": "10.0.0.0/24"
+		}
+	},
+	"variables" : {
+		"vnet" : "Network1",
+		"subnet1" : "Subnet1",
+		"vnetID" : "[resourceId('Microsoft.Network/virtualNetworks',variables('vnet'))]",
+		"subnetRef1" : "[concat(variables('vnetID'), '/subnets/', variables('subnet1'))]"
+	},
+	"resources" : [
+		{
+			"apiVersion" : "2015-05-01-preview",
+			"name" : "[variables('vnet')]",
+			"type" : "Microsoft.Network/virtualNetworks",
+			"location" : "[parameters('location')]",
+			"properties" : {
+				"addressSpace" : {
+					"addressPrefixes" : [
+						"[parameters('addressPrefix')]"
+					]
+				},
+				"subnets" : [
+					{
+						"name": "[variables('subnet1')]",
+						"properties": {
+							"addressPrefix": "[parameters('subnetPrefix1')]"
+						}
+					},
+				]
+			}
+		}
+	]
+}

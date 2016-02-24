@@ -1,0 +1,545 @@
+{
+   "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+   "contentVersion": "",
+   "parameters": {
+		"webServerStorageAccountName": {
+			"type": "string",
+		  "defaultValue" : "webServerStorage"
+		  "metadata": {
+			"description": "Unique DNS Name for the Storage Account where the  Web server/Nginx Virtual Machine's disks will be placed."
+		  }
+		},
+		"jenkinsStorageAccountName": {
+		  "type": "string",
+		  "defaultValue" : "jenkinsStorage"
+		  "metadata": {
+			"description": "Unique DNS Name for the Storage Account where the jenkins Virtual Machine's disks will be placed."
+		  }
+		},
+		"sonarStorageAccountName": {
+		  "type": "string",
+		  "defaultValue" : "sonarStorage"
+		  "metadata": {
+			"description": "Unique DNS Name for the Storage Account where the sonar Virtual Machine's disks will be placed."
+		  }
+		},
+		"dbStorageAccountName": {
+		  "type": "string",
+		  "defaultValue" : "dbStorage"
+		  "metadata": {
+			"description": "Unique DNS Name for the Storage Account where the database Virtual Machine's disks will be placed."
+		  }
+		},
+		"adminUsername": {
+		  "type": "string",
+		  "metadata": {
+			"description": "User name for the Virtual Machine."
+		  }
+		},
+		"adminPassword": {
+		  "type": "securestring",
+		  "metadata": {
+			"description": "Password for the Virtual Machine."
+		  }
+		},
+		"dnsNameForPublicIP": {
+		  "type": "string",
+		  "defaultValue" : "devopsdns122015",
+		  "metadata": {
+			"description": "Unique DNS Name for the Public IP used to access the Virtual Machine."
+		  }
+		},
+		"ubuntuOSVersion": {
+		  "type": "string",
+		  "defaultValue": "14.04.2-LTS",
+		  "allowedValues": [
+			"12.04.5-LTS",
+			"14.04.2-LTS",
+			"15.04"
+		  ],
+		  "metadata": {
+			"description": "The Ubuntu version for the VM. This will pick a fully patched image of this given Ubuntu version. Allowed values: 12.04.5-LTS, 14.04.2-LTS, 15.04."
+		  }
+		}
+  },
+   "variables": { 
+		"vmName1" : "webServer",
+		"vmName2" : "jenkins",
+		"vmName3" : "sonar",
+		"vmName4" : "dbMySql",
+		"vmSize1" : "Standard_D4",
+		"vmSize2" : "Standard_D13",
+		"vmStorageAccountContainerName" : "vhds",
+		"nicName1" : "webServerNic",
+		"nicName2" : "jenkinsNic",
+		"nicName3" : "sonarNic",
+		"nicName4" : "dbMySqlNic"
+		"virtualNetworkName": "DevOpsVNET",
+		"addressPrefix": "10.0.0.0/16",
+		"subnetName1": "WebServerSubnet",
+		"subnetPrefix1": "10.0.0.0/24",
+		"subnetName2": "JenkinsSonarSubnet",
+		"subnetPrefix2": "10.0.1.0/24",
+		"subnetName3": "DatabaseSubnet",
+		"subnetPrefix3": "10.0.2.0/24",
+		"storageAccountType": "Standard_LRS",
+		"publicIPAddressName": "myPublicIP",
+		"publicIPAddressType": "Dynamic",
+		"imagePublisher": "Canonical",
+		"imageOffer": "UbuntuServer",
+		"OSDiskName": "osdiskforubuntu",
+		"networkSecurityGroupName" : "networkSecurityGroupVNet",
+		"networkSecurityGroupName1" : "networkSecurityGroupWebServer",
+		"networkSecurityGroupName2" : "networkSecurityGroupJenkinsSonar",
+		"networkSecurityGroupName3" : "networkSecurityGroupDatabase",
+		"vnetID": "[resourceId('Microsoft.Network/virtualNetworks',variables('virtualNetworkName'))]",
+		"subnetRef1": "[concat(variables('vnetID'),'/subnets/',variables('subnetName1'))]",
+		"subnetRef2": "[concat(variables('vnetID'),'/subnets/',variables('subnetName2'))]",
+		"subnetRef3": "[concat(variables('vnetID'),'/subnets/',variables('subnetName3'))]"
+   },
+   "resources": [ 
+		{
+			"apiVersion" : "2015-05-01-preview",
+			"type" : "Microsoft.Compute/virtualMachines",
+			"name" : "[variables('vmName1')]",
+			"location" : "[parameters('location')]",
+			"tags" : {
+				"displayName" : "[variables('vmName1')]"
+			},
+			"dependsOn" : [
+				"[concat('Microsoft.Storage/storageAccounts/', parameters('webServerStorageAccountName'))]",
+				"[concat('Microsoft.Network/networkInterfaces/', variables('nicName1'))]",
+	
+			]
+			"properties": {
+				"hardwareProfile": {
+					"vmSize": "[variables('vmSize')]"
+				},
+				"osProfile": {
+					"computerName": "[variables('vmName1')]",
+					"adminUsername": "[parameters('adminUsername')]",
+					"adminPassword": "[parameters('adminPassword')]"
+				},
+				"storageProfile": {
+					"imageReference": {
+						"publisher": "[variables('imagePublisher')]",
+						"offer": "[variables('imageOffer')]",
+						"sku": "[parameters('ubuntuOSVersion')]",
+						"version": "latest"
+					},
+					"osDisk": {
+						"name": "osdisk",
+							"vhd": {
+								"uri": "[concat('http://',parameters('newStorageAccountName'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskName'),'.vhd')]"
+						},
+						"caching": "ReadWrite",
+						"createOption": "FromImage"
+					}			
+				},
+				"networkProfile": {
+					"networkInterfaces": [
+						{
+							"id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicName1'))]"
+						}
+					]
+				},
+			}
+		},
+		
+		{
+			"apiVersion" : "2015-05-01-preview",
+			"type" : "Microsoft.Compute/virtualMachines",
+			"name" : "[variables('vmName2')]",
+			"location" : "[parameters('location')]",
+			"tags" : {
+				"displayName" : "[variables('vmName2')]"
+			},
+			"dependsOn" : [
+				"[concat('Microsoft.Storage/storageAccounts/', parameters('webServerStorageAccountName'))]",
+				"[concat('Microsoft.Network/networkInterfaces/', variables('nicName2'))]"
+			]
+			"properties": {
+				"hardwareProfile": {
+					"vmSize": "[variables('vmSize')]"
+				},
+				"osProfile": {
+					"computerName": "[variables('vmName1')]",
+					"adminUsername": "[parameters('adminUsername')]",
+					"adminPassword": "[parameters('adminPassword')]"
+				},
+				"storageProfile": {
+					"imageReference": {
+						"publisher": "[variables('imagePublisher')]",
+						"offer": "[variables('imageOffer')]",
+						"sku": "[parameters('ubuntuOSVersion')]",
+						"version": "latest"
+					},
+					"osDisk": {
+						"name": "osdisk",
+							"vhd": {
+								"uri": "[concat('http://',parameters('jenkinsStorageAccountName'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskName'),'.vhd')]"
+						},
+						"caching": "ReadWrite",
+						"createOption": "FromImage"
+					}			
+				},
+				"networkProfile": {
+					"networkInterfaces": [
+						{
+							"id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicName2'))]"
+						}
+					]
+				},
+			}
+		},
+		{
+			"apiVersion" : "2015-05-01-preview",
+			"type" : "Microsoft.Compute/virtualMachines",
+			"name" : "[variables('vmName3')]",
+			"location" : "[parameters('location')]",
+			"tags" : {
+				"displayName" : "[variables('vmName3')]"
+			},
+			"dependsOn" : [
+				"[concat('Microsoft.Storage/storageAccounts/', parameters('webServerStorageAccountName'))]",
+				"[concat('Microsoft.Network/networkInterfaces/', variables('nicName3'))]"
+			]
+			"properties": {
+				"hardwareProfile": {
+					"vmSize": "[variables('vmSize')]"
+				},
+				"osProfile": {
+					"computerName": "[variables('vmName3')]",
+					"adminUsername": "[parameters('adminUsername')]",
+					"adminPassword": "[parameters('adminPassword')]"
+				},
+				"storageProfile": {
+					"imageReference": {
+						"publisher": "[variables('imagePublisher')]",
+						"offer": "[variables('imageOffer')]",
+						"sku": "[parameters('ubuntuOSVersion')]",
+						"version": "latest"
+					},
+					"osDisk": {
+						"name": "osdisk",
+							"vhd": {
+								"uri": "[concat('http://',parameters('sonarStorageAccountName'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskName'),'.vhd')]"
+						},
+						"caching": "ReadWrite",
+						"createOption": "FromImage"
+					}			
+				},
+				"networkProfile": {
+					"networkInterfaces": [
+						{
+							"id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicName3'))]"
+						}
+					]
+				},
+			}
+		},
+		{
+			"apiVersion" : "2015-05-01-preview",
+			"type" : "Microsoft.Compute/virtualMachines",
+			"name" : "[variables('vmName4')]",
+			"location" : "[parameters('location')]",
+			"tags" : {
+				"displayName" : "[variables('vmName4')]"
+			},
+			"dependsOn" : [
+				"[concat('Microsoft.Storage/storageAccounts/', parameters('dbStorageAccountName'))]",
+				"[concat('Microsoft.Network/networkInterfaces/', variables('nicName4'))]"
+			]
+			"properties": {
+				"hardwareProfile": {
+					"vmSize": "[variables('vmSize')]"
+				},
+				"osProfile": {
+					"computerName": "[variables('vmName4')]",
+					"adminUsername": "[parameters('adminUsername')]",
+					"adminPassword": "[parameters('adminPassword')]"
+				},
+				"storageProfile": {
+					"imageReference": {
+						"publisher": "[variables('imagePublisher')]",
+						"offer": "[variables('imageOffer')]",
+						"sku": "[parameters('ubuntuOSVersion')]",
+						"version": "latest"
+					},
+					"osDisk": {
+						"name": "osdisk",
+							"vhd": {
+								"uri": "[concat('http://',parameters('dbStorageAccountName'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskName'),'.vhd')]"
+						},
+						"caching": "ReadWrite",
+						"createOption": "FromImage"
+					}			
+				},
+				"networkProfile": {
+					"networkInterfaces": [
+						{
+							"id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicName4'))]"
+						}
+					]
+				},
+			}
+		},
+		{
+			"apiVersion": "2015-05-01-preview",
+			"type": "Microsoft.Network/virtualNetworks",
+			"name": "[variables('virtualNetworkName')]",
+			"location": "[parameters('location')]",
+			"properties": {
+				"addressSpace": {
+					"addressPrefixes": [
+						"[parameters('addressPrefix')]"
+					]
+				},
+				"subnets": [
+					{
+						"name": "[variables('subnetName1')]",
+						"dependsOn" : [
+							"[concat('Microsoft.Network/networkSecurityGroups', variables("networkSecurityGroupName1"))]
+						],
+						"properties": {
+							"addressPrefix": "[parameters('subnetPrefix1')]"
+						}
+					}
+				]
+				"subnets": [
+					{
+						"name": "[variables('subnetName2')]",
+						"dependsOn" : [
+							"[concat('Microsoft.Network/networkSecurityGroups', variables("networkSecurityGroupName2"))]
+						],
+						"properties": {
+							"addressPrefix": "[parameters('subnetPrefix2')]"
+						}
+					}
+				]
+				"subnets": [
+					{
+						"name": "[variables('subnetName3')]",
+						"dependsOn" : [
+							"[concat('Microsoft.Network/networkSecurityGroups', variables("networkSecurityGroupName3"))]
+						],
+						"properties": {
+							"addressPrefix": "[parameters('subnetPrefix3')]"
+						}
+					}
+				]
+			}
+		},
+		{
+			"type": "Microsoft.Storage/storageAccounts",
+			"name": "[parameters('webServerStorageAccountName')]",
+			"apiVersion": "2015-05-01-preview",
+			"location": "[parameters('location')]",
+			"properties": {
+				"accountType": "[variables('storageAccountType')]"
+			}
+		},
+		{
+			"type": "Microsoft.Storage/storageAccounts",
+			"name": "[parameters('jenkinsStorageAccountName')]",
+			"apiVersion": "2015-05-01-preview",
+			"location": "[parameters('location')]",
+			"properties": {
+				"accountType": "[variables('storageAccountType')]"
+			}
+		},
+		{
+			"type": "Microsoft.Storage/storageAccounts",
+			"name": "[parameters('sonarStorageAccountName')]",
+			"apiVersion": "2015-05-01-preview",
+			"location": "[parameters('location')]",
+			"properties": {
+				"accountType": "[variables('storageAccountType')]"
+			}
+		},
+		{
+			"type": "Microsoft.Storage/storageAccounts",
+			"name": "[parameters('dbStorageAccountName')]",
+			"apiVersion": "2015-05-01-preview",
+			"location": "[parameters('location')]",
+			"properties": {
+				"accountType": "[variables('storageAccountType')]"
+			}
+		},
+		{
+			"apiVersion": "2015-05-01-preview",
+			"type": "Microsoft.Network/publicIPAddresses",
+			"name": "[variables('publicIPAddressName')]",
+			"location": "[parameters('location')]",
+			"properties": {
+			"publicIPAllocationMethod": "[variables('publicIPAddressType')]",
+				"dnsSettings": {
+					"domainNameLabel": "[parameters('dnsNameForPublicIP')]"
+				}
+			}
+		},
+		{
+			"apiVersion": "2015-05-01-preview",
+			"type": "Microsoft.Network/networkInterfaces",
+			"name": "[variables('nicName1')]",
+			"location": "[parameters('location')]",
+			"dependsOn": [
+				"[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]",
+				"[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+			],
+			"properties": {
+				"ipConfigurations": [
+					{
+						"name": "ipconfig1",
+						"properties": {
+							"privateIPAllocationMethod": "Dynamic",
+							"publicIPAddress": {
+								"id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
+							},
+							"subnet": {
+								"id": "[variables('subnetRef1')]"
+							}
+						}
+					}
+				]
+			}
+		},
+		{
+			"apiVersion": "2015-05-01-preview",
+			"type": "Microsoft.Network/networkInterfaces",
+			"name": "[variables('nicName2')]",
+			"location": "[parameters('location')]",
+			"dependsOn": [
+				"[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]",
+				"[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+			],
+			"properties": {
+				"ipConfigurations": [
+					{
+						"name": "ipconfig1",
+						"properties": {
+							"privateIPAllocationMethod": "Dynamic",
+							"publicIPAddress": {
+								"id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
+							},
+							"subnet": {
+								"id": "[variables('subnetRef2')]"
+							}
+						}
+					}
+				]
+			}
+		},
+		{
+			"apiVersion": "2015-05-01-preview",
+			"type": "Microsoft.Network/networkInterfaces",
+			"name": "[variables('nicName3')]",
+			"location": "[parameters('location')]",
+			"dependsOn": [
+				"[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]",
+				"[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+			],
+			"properties": {
+				"ipConfigurations": [
+					{
+						"name": "ipconfig1",
+						"properties": {
+							"privateIPAllocationMethod": "Dynamic",
+							"publicIPAddress": {
+								"id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
+							},
+							"subnet": {
+								"id": "[variables('subnetRef3')]"
+							}
+						}
+					}
+				]
+			}
+		},
+		{
+			"apiVersion": "2015-05-01-preview",
+			"type": "Microsoft.Network/networkSecurityGroups",
+			"name": "[variables('networkSecurityGroupName1')]",
+			"location": "[parameters('location')]",
+			"properties": {
+				"securityRules": [
+					{
+						"name": "first_rule",
+						"properties": {
+							"description": "This is the first rule",
+							"protocol": "Tcp",
+							"sourcePortRange": "80",
+							"destinationPortRange": "80",
+							"sourceAddressPrefix": "*",
+							"destinationAddressPrefix": "*",
+							"access": "Allow",
+							"priority": 123,
+							"direction": "Inbound"
+						}
+					}
+				]
+			}
+		},
+		{
+			"apiVersion": "2015-05-01-preview",
+			"type": "Microsoft.Network/networkSecurityGroups",
+			"name": "[variables('networkSecurityGroupName2')]",
+			"location": "[parameters('location')]",
+			"properties": {
+				"securityRules": [
+					{
+						"name": "first_rule",
+						"properties": {
+							"description": "This is the first rule",
+							"protocol": "Tcp",
+							"sourcePortRange": "8080",
+							"destinationPortRange": "8080",
+							"sourceAddressPrefix": "10.0.0.*",
+							"destinationAddressPrefix": "10.0.0.*",
+							"access": "Allow",
+							"priority": 123,
+							"direction": "Inbound"
+						}
+						"name": "second_rule",
+						"properties": {
+							"description": "This is the second rule",
+							"protocol": "Tcp",
+							"sourcePortRange": "9000",
+							"destinationPortRange": "9000",
+							"sourceAddressPrefix": "10.0.0.*",
+							"destinationAddressPrefix": "10.0.0.*",
+							"access": "Allow",
+							"priority": 123,
+							"direction": "Inbound"
+						}
+					}
+				]
+			}
+		},
+		{
+			"apiVersion": "2015-05-01-preview",
+			"type": "Microsoft.Network/networkSecurityGroups",
+			"name": "[variables('networkSecurityGroupName3')]",
+			"location": "[parameters('location')]",
+			"properties": {
+				"securityRules": [
+					{
+						"name": "first_rule",
+						"properties": {
+							"description": "This is the first rule",
+							"protocol": "Tcp",
+							"sourcePortRange": "3306",
+							"destinationPortRange": "3306",
+							"sourceAddressPrefix": "10.0.1.*",
+							"destinationAddressPrefix": "10.0.1.*",
+							"access": "Allow",
+							"priority": 123,
+							"direction": "Inbound"
+						}
+					}
+				]
+			}
+		},
+	],
+   "outputs": {  }
+}

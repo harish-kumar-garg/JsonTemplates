@@ -1,0 +1,217 @@
+{
+	"properties" : {
+		"template" : {
+			"$schema": "https://schema.management.azure.com/schemas/2014-04-01-preview/deploymentTemplate.json#",
+			"contentVersion": "1.0.0.0",
+			"parameters" : {
+				"userName" : {
+					"type" : "string",
+					"defaultValue" : "azureUser"
+				},
+				"password" : {
+					"type" : "secureString",
+					"defaultValue" : "Password@123"
+				},
+				"location" : {
+					"type" : "string",
+					"defaultValue" : "Southeast Asia",
+					"allowedValues" : [
+						"Southeast Asia",
+						"West US",
+						"East US"
+					]
+				},
+				"addressPrefix": {
+					"type": "string",
+					"defaultValue": "10.0.0.0/16"
+				},
+				"subnetPrefix1": {
+					"type": "string",
+					"defaultValue": "10.0.0.0/24"
+				},
+				"subnetPrefix2": {
+					"type": "string",
+					"defaultValue": "10.0.1.0/24"
+				},
+				"subnetPrefix3": {
+					"type": "string",
+					"defaultValue": "10.0.2.0/24"
+				},
+				"vnet" : {
+					"type" : "string",
+					"defaultValue" : "Network1"
+				},
+				"subnet1" : {
+					"type" : "string",
+					"defaultValue" : "Subnet1"
+				},
+				"subnet2" : {
+					"type" : "string",
+					"defaultValue" : "Subnet2"
+				},
+				"subnet3" : {
+					"type" : "string",
+					"defaultValue" : "Subnet3"
+				},
+				"nsg1" : {
+					"type" : "string",
+					"defaultValue" : "nsgforSubnet1"
+				},
+				"nsg2" : {
+					"type" : "string",
+					"defaultValue" : "nsgforSubnet2"
+				},
+				"nsg3" : {
+					"type" : "string",
+					"defaultValue" : "nsgforSubnet3"
+				}
+			},
+			"variables" : {
+				"vnetID" : "[resourceId('Microsoft.Network/virtualNetworks',parameters('vnet'))]",
+				"subnetRef1" : "[concat(variables('vnetID'), '/subnets/', parameters('subnet1'))]",
+				"subnetRef2" : "[concat(variables('vnetID'), '/subnets/', parameters('subnet2'))]",
+				"subnetRef3" : "[concat(variables('vnetID'), '/subnets/', parameters('subnet3'))]",
+				"nsg1" : "nsgforSubnet1",
+				"nsg2" : "nsgforSubnet2",
+				"nsg3" : "nsgforSubnet3"
+			},
+			"resources" : [
+				{
+					"apiVersion" : "2015-05-01-preview",
+					"name" : "[parameters('vnet')]",
+					"type" : "Microsoft.Network/virtualNetworks",
+					"location" : "[parameters('location')]",
+					"dependsOn" : [
+						"[concat('Microsoft.Network/networkSecurityGroups/', parameters('nsg1'))]",
+						"[concat('Microsoft.Network/networkSecurityGroups/', parameters('nsg2'))]",
+						"[concat('Microsoft.Network/networkSecurityGroups/', parameters('nsg3'))]"
+					],
+					"properties" : {
+						"addressSpace" : {
+							"addressPrefixes" : [
+								"[parameters('addressPrefix')]"
+							]
+						},
+						"subnets" : [
+							{
+								"name": "[parameters('subnet1')]",
+								"properties": {
+									"addressPrefix": "[parameters('subnetPrefix1')]",
+									"networkSecurityGroup": {
+										"id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg1'))]"
+									}
+								}
+							},
+							{
+								"name": "[parameters('subnet2')]",
+								"properties": {
+									"addressPrefix": "[parameters('subnetPrefix2')]",
+									"networkSecurityGroup": {
+										"id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg2'))]"
+									}
+								}
+							},
+							{
+								"name" : "[parameters('subnet3')]",
+								"properties" : {
+									"addressPrefix" : "[parameters('subnetPrefix3')]",
+									"networkSecurityGroup": {
+										"id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsg3'))]"
+									}
+								}
+							}
+						]
+					}
+				},
+				{
+					"apiVersion": "2015-05-01-preview",
+					"type": "Microsoft.Network/networkSecurityGroups",
+					"name": "[parameters('nsg1')]",
+					"location": "[parameters('location')]",
+					"properties": {
+						"securityRules": [
+							{
+								"name" : "First_Rule",
+								"properties": {
+									"protocol" : "Tcp",
+									"sourcePortRange" : "*",
+									"destinationPortRange" : "*",
+									"sourceAddressPrefix" : "*",
+									"destinationAddressPrefix" : "[parameters('subnetPrefix2')]",
+									"access" : "Allow",
+									"priority": 101,
+									"direction": "Inbound"
+								}
+							}
+						]
+					}
+				},
+				{
+					"apiVersion": "2015-05-01-preview",
+					"type": "Microsoft.Network/networkSecurityGroups",
+					"name": "[parameters('nsg2')]",
+					"location": "[parameters('location')]",
+					"properties": {
+						"securityRules": [
+							{
+								"name" : "First_Rule",
+								"properties": {
+									"protocol" : "Tcp",
+									"sourcePortRange" : "*",
+									"destinationPortRange" : "*",
+									"sourceAddressPrefix" : "[parameters('subnetPrefix2')]",
+									"destinationAddressPrefix" : "[parameters('subnetPrefix3')]",
+									"access" : "Allow",
+									"priority": 101,
+									"direction": "Inbound"
+								}
+							}
+						]
+					}
+				},
+				{
+					"apiVersion": "2015-05-01-preview",
+					"type": "Microsoft.Network/networkSecurityGroups",
+					"name": "[parameters('nsg3')]",
+					"location": "[parameters('location')]",
+					"properties": {
+						"securityRules": [
+							{
+								"name" : "First_Rule",
+								"properties": {
+									"protocol" : "Tcp",
+									"sourcePortRange" : "*",
+									"destinationPortRange" : "*",
+									"sourceAddressPrefix" : "[parameters('subnetPrefix2')]",
+									"destinationAddressPrefix" : "*",
+									"access" : "Allow",
+									"priority": 101,
+									"direction": "Inbound"
+								}
+							}
+						]
+					}
+				}
+			],
+			"outputs" : {
+				"VnetID" : {
+					"type" : "string",
+					"value" : "[variables('vnetID')]"
+				},
+				"Subnet1ID" : {
+					"type" : "string",
+					"value" : "[variables('subnetRef1')]"
+				},
+				"Subnet2ID" : {
+					"type" : "string",
+					"value" : "[variables('subnetRef2')]"
+				},
+				"Subnet3ID" : {
+					"type" : "string",
+					"value" : "[variables('subnetRef3')]"
+				}
+			}
+		},
+		"mode" : "Incremental"
+	}
+}

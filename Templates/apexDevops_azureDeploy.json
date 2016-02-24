@@ -1,0 +1,1898 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "Southeast Asia",
+	  "allowedValues": [
+        "Southeast Asia",
+        "East US",
+        "West US",
+        "West Europe",
+        "East Asia"
+      ]
+    },
+    "addressPrefix": {
+      "type": "string",
+      "defaultValue": "10.0.0.0/16"
+    },
+    "subnetPrefix": {
+      "type": "string",
+      "defaultValue": "10.0.0.0/24"
+    },
+    "adminUsername": {
+      "type": "string",
+      "defaultValue": "azureuser"
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "defaultValue": "password@123"
+    },
+    "publicIpForWebLb": {
+      "type": "string",
+      "defaultValue": "publicIpForWebLb",
+      "metadata": {
+        "description": "Public IP Name"
+      }
+    },
+    "publicIPForJumpServer": {
+      "type": "string",
+      "defaultValue": "publicIpForJumpserver",
+      "metadata": {
+        "description": "Public IP Name"
+      }
+    },
+    "dnsNameForLb": {
+      "type": "string",
+      "defaultValue": "apexlbdns"
+    },
+    "dnsNameForJumpServer": {
+      "type": "string",
+      "defaultValue": "apexjumpserverdns"
+    },
+    "ubuntuOSVersion": {
+      "type": "string",
+      "defaultValue": "15.04",
+      "allowedValues": [
+        "12.04.5-LTS",
+        "14.04.2-LTS",
+        "15.04"
+      ]
+    },
+    "windowsOSVersion": {
+      "type": "string",
+      "defaultValue": "2012-R2-Datacenter",
+      "allowedValues": [
+        "2008-R2-SP1",
+        "2012-Datacenter",
+        "2012-R2-Datacenter"
+      ]
+	  
+	 
+    },
+	
+	"azurestorageacc": {
+      "type": "string",
+      "defaultValue": "apexbigazurestorage"
+    },
+	
+    "jumpserverstorageaccount": {
+      "type": "string",
+      "defaultValue": "apexjumpserverstorage"
+    },
+    "webserverstorageaccount": {
+      "type": "string",
+      "defaultValue": "apexwebserverstorage"
+    },
+    "webserverstorageaccount1": {
+      "type": "string",
+      "defaultValue": "apexwebserverstorage1"
+    },
+    "appserverstorageaccount": {
+      "type": "string",
+      "defaultValue": "apexappserverstorage"
+    },
+    "appserverstorageaccount1": {
+      "type": "string",
+      "defaultValue": "apexappserverstorage1"
+    },
+    "jobserverstorageaccount": {
+      "type": "string",
+      "defaultValue": "apexjobserverstorage"
+    },
+    "jobserverstorageaccount1": {
+      "type": "string",
+      "defaultValue": "apexjobserverstorage1"
+    },
+    "sparkserverstorageaccount": {
+      "type": "string",
+      "defaultValue": "apexsparkserverstorage"
+    },
+    "sparkserverstorageaccount1": {
+      "type": "string",
+      "defaultValue": "apexsparkserverstorage1"
+    },
+    "pentserverstorageaccount": {
+      "type": "string",
+      "defaultValue": "apexpentserverstorage"
+    },
+    "pentserverstorageaccount1": {
+      "type": "string",
+      "defaultValue": "apexpentserverstorage1"
+    },
+    "esstorageaccount": {
+      "type": "string",
+      "defaultValue": "apexesserverstorage"
+    },
+    "esstorageaccount1": {
+      "type": "string",
+      "defaultValue": "apexesserverstorage1"
+    },
+	"mindtreeaddressprefix": {
+		"type": "string",
+		"defaultValue": ""
+	}
+  },
+  "variables": {
+    "virtualNetworkName": "apexVirtualNetwork",
+    "subnetName1": "JumpServerSubnet",
+    "subnetName2": "LBSubnet",
+    "subnetName3": "ServerSubnet",
+    "subnetName4": "ApplicationSubnet",
+    "subnetName5": "DatabaseSubnet",
+    "nsgforsubnet1": "JumpServerNsg",
+    "nsgforsubnet2": "LBNsg",
+    "nsgforsubnet3": "ServerNsg",
+    "nsgforsubnet4": "ApplicationNsg",
+    "nsgforsubnet5": "DatabaseNsg",
+    "virtualMachine1": "JumpServer",
+    "virtualMachine2": "WebServer1",
+    "virtualMachine2_1": "WebServer2",
+    "virtualMachine3": "ApplicationServer1",
+    "virtualMachine3_1": "ApplicationServer2",
+    "virtualMachine4": "JobServer1",
+    "virtualMachine4_1": "JobServer2",
+    "virtualMachine5": "SparkServer1",
+    "virtualMachine5_1": "SparkServer2",
+    "virtualMachine6": "PentahoServer1",
+    "virtualMachine6_1": "PentahoServer2",
+    "virtualMachine7": "ElasticSearch1",
+    "virtualMachine7_1": "ElasticSearch2",
+    "availabilitySetName": "WebServerAvailSet",
+    "nic1": "JumpServerNic",
+    "nic2": "WebServerClusterNic1",
+    "nic21": "WebServerClusterNic2",
+    "nic3": "ApplicationServerClusterNic1",
+    "nic31": "ApplicationServerClusterNic2",
+    "nic4": "JobServerClusterNic1",
+    "nic41": "JobServerClusterNic2",
+    "nic5": "SparkServerClusterNic1",
+    "nic51": "SparkServerClusterNic2",
+    "nic6": "PentahoServerClusterNic1",
+    "nic61": "PentahoServerClusterNic2",
+    "nic7": "ElasticSearchClusterNic1",
+    "nic71": "ElasticSearchClusterNic2",
+    "nicLb": "LoadBalancerNic",
+    "imagePublisher": "Canonical",
+	"imagePublisherWindows": "MicrosoftWindowsServer",
+    "imageOfferWindows": "WindowsServer",
+    "OSDiskNameWindows": "osdiskforwindows",
+    "imageOfferUbuntu": "UbuntuServer",
+    "OSDiskNameUbuntu": "osdiskforubuntu",
+    "vnetID": "[resourceId('Microsoft.Network/virtualNetworks',variables('virtualNetworkName'))]",
+    "subnetRef1": "[concat(variables('vnetID'),'/subnets/',variables('subnetName1'))]",
+    "subnetRef2": "[concat(variables('vnetID'),'/subnets/',variables('subnetName2'))]",
+    "subnetRef3": "[concat(variables('vnetID'),'/subnets/',variables('subnetName3'))]",
+    "subnetRef4": "[concat(variables('vnetID'),'/subnets/',variables('subnetName4'))]",
+    "subnetRef5": "[concat(variables('vnetID'),'/subnets/',variables('subnetName5'))]",
+    "vmSize1": "Basic_A0",
+    "vmSize2": "Basic_A0",
+	"vmSizeWeb": "Standard_D1",
+    "vmStorageAccountContainerName": "vhds",
+    "storageAccountType": "Standard_LRS",
+    "addressPrefix": "10.0.0.0/16",
+    "subnetPrefix1": "10.0.0.0/24",
+    "subnetPrefix2": "10.0.1.0/24",
+    "subnetPrefix3": "10.0.2.0/24",
+    "subnetPrefix4": "10.0.3.0/24",
+    "subnetPrefix5": "10.0.4.0/24",
+    "publicIPAddressName": "myPublicIP",
+	"publicIPAddressType": "Dynamic",
+    "loadbalancer1": "lb1",
+    "lbID": "[resourceId('Microsoft.Network/loadBalancers', variables('loadbalancer1'))]",
+    "nicId": "[resourceId('Microsoft.Network/networkInterfaces', variables('nicLb'))]",
+	"publicIPAddressLBID":"[resourceId('Microsoft.Network/publicIPAddresses',parameters('publicIpForWebLb'))]",
+    "frontEndIPConfigID": "[concat(variables('lbID'), '/frontendIPConfigurations/loadBalancerFrontEnd')]",
+    "backEndIPConfigID": "[concat(variables('nicId'), '/ipConfigurations/ipconfig1')]"
+  },
+  "resources": [
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/virtualNetworks",
+      "name": "[variables('virtualNetworkName')]",
+      "location": "[parameters('location')]",
+	  "dependsOn": [
+              "[concat('Microsoft.Network/networkSecurityGroups/', variables('nsgforsubnet1'))]",
+			  "[concat('Microsoft.Network/networkSecurityGroups/', variables('nsgforsubnet2'))]",
+			  "[concat('Microsoft.Network/networkSecurityGroups/', variables('nsgforsubnet3'))]",
+			  "[concat('Microsoft.Network/networkSecurityGroups/', variables('nsgforsubnet4'))]",
+			  "[concat('Microsoft.Network/networkSecurityGroups/', variables('nsgforsubnet5'))]"
+            ],
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[parameters('addressPrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[variables('subnetName1')]",
+           
+            "properties": {
+              "addressPrefix": "[variables('subnetPrefix1')]",
+			  "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgforsubnet1'))]"
+              }
+            }
+          },
+          {
+            "name": "[variables('subnetName2')]",
+            
+            "properties": {
+              "addressPrefix": "[variables('subnetPrefix2')]",
+			  "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgforsubnet2'))]"
+              }
+            }
+          },
+          {
+            "name": "[variables('subnetName3')]",
+            
+            "properties": {
+              "addressPrefix": "[variables('subnetPrefix3')]",
+			  "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgforsubnet3'))]"
+              }
+            }
+          },
+          {
+            "name": "[variables('subnetName4')]",
+            
+            "properties": {
+              "addressPrefix": "[variables('subnetPrefix4')]",
+			  "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgforsubnet4'))]"
+              }
+            }
+          },
+          {
+            "name": "[variables('subnetName5')]",
+
+            "properties": {
+              "addressPrefix": "[variables('subnetPrefix5')]",
+			  "networkSecurityGroup": {
+                "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgforsubnet5'))]"
+              }
+			  
+            }
+          }
+        ]
+      }
+    },
+	{
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[parameters('azurestorageacc')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "properties": {
+        "accountType": "[variables('storageAccountType')]"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[parameters('jumpserverstorageaccount')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "properties": {
+        "accountType": "[variables('storageAccountType')]"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[parameters('webserverstorageaccount')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "properties": {
+        "accountType": "[variables('storageAccountType')]"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[parameters('webserverstorageaccount1')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "properties": {
+        "accountType": "[variables('storageAccountType')]"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[parameters('appserverstorageaccount')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "properties": {
+        "accountType": "[variables('storageAccountType')]"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[parameters('appserverstorageaccount1')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "properties": {
+        "accountType": "[variables('storageAccountType')]"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[parameters('jobserverstorageaccount')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "properties": {
+        "accountType": "[variables('storageAccountType')]"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[parameters('jobserverstorageaccount1')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "properties": {
+        "accountType": "[variables('storageAccountType')]"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[parameters('sparkserverstorageaccount')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "properties": {
+        "accountType": "[variables('storageAccountType')]"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[parameters('sparkserverstorageaccount1')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "properties": {
+        "accountType": "[variables('storageAccountType')]"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[parameters('pentserverstorageaccount')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "properties": {
+        "accountType": "[variables('storageAccountType')]"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[parameters('pentserverstorageaccount1')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "properties": {
+        "accountType": "[variables('storageAccountType')]"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[parameters('esstorageaccount')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "properties": {
+        "accountType": "[variables('storageAccountType')]"
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[parameters('esstorageaccount1')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "properties": {
+        "accountType": "[variables('storageAccountType')]"
+      }
+    },
+    {
+      "type": "Microsoft.Compute/availabilitySets",
+      "name": "[variables('availabilitySetName')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[resourceGroup().location]",
+      "properties": {}
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[parameters('publicIpForWebLb')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "publicIPAllocationMethod": "[variables('publicIPAddressType')]",
+        "dnsSettings": {
+          "domainNameLabel": "[parameters('dnsNameForLb')]"
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[parameters('publicIPForJumpServer')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "publicIPAllocationMethod": "[variables('publicIPAddressType')]",
+        "dnsSettings": {
+          "domainNameLabel": "[parameters('dnsNameForJumpServer')]"
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('nic1')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/publicIPAddresses/', parameters('publicIPForJumpServer'))]",
+        "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses',parameters('publicIPForJumpServer'))]"
+              },
+              "subnet": {
+                "id": "[variables('subnetRef1')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('nic2')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+         "[concat('Microsoft.Network/loadBalancers/',  variables('loadbalancer1'))]",
+        "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              
+              "subnet": {
+                "id": "[variables('subnetRef3')]"
+              },
+              "loadBalancerBackendAddressPools": [
+                {
+                  "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadbalancer1')),'/backendAddressPools/loadBalancerBackEnd')]"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('nic21')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/loadBalancers/',  variables('loadbalancer1'))]",
+        "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              
+              "subnet": {
+                "id": "[variables('subnetRef3')]"
+              },
+              "loadBalancerBackendAddressPools": [
+                {
+                  "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadbalancer1')),'/backendAddressPools/loadBalancerBackEnd')]"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('nic3')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('subnetRef4')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('nic31')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+           
+              "subnet": {
+                "id": "[variables('subnetRef4')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('nic4')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        
+        "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+
+              "subnet": {
+                "id": "[variables('subnetRef4')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('nic41')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        
+        "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+             
+              "subnet": {
+                "id": "[variables('subnetRef4')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('nic5')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('subnetRef4')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('nic51')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('subnetRef4')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('nic6')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('subnetRef4')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('nic61')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('subnetRef4')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+   {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('nic7')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('subnetRef5')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkInterfaces",
+      "name": "[variables('nic71')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('subnetRef5')]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "name": "[variables('loadBalancer1')]",
+      "type": "Microsoft.Network/loadBalancers",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]",
+        "[concat('Microsoft.Network/publicIPAddresses/', parameters('publicIpForWebLb'))]"
+      ],
+      "properties": {
+        "frontendIPConfigurations": [
+          {
+            "name": "loadBalancerFrontEnd",
+            "properties": {
+             /* "subnet": {
+                "id": "[variables('subnetRef2')]"
+              },*/
+              "publicIPAddress": {
+                "id": "[variables('publicIPAddressLBID')]"
+              }
+            }
+          }
+        ],
+        "backendAddressPools": [
+          {
+            "name": "loadBalancerBackEnd",
+            "subnet": {
+              "id": "[variables('subnetRef3')]"
+            }
+          }
+        ],
+        "loadBalancingRules": [
+          {
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadbalancer1')), '/frontendIpConfigurations/loadBalancerFrontEnd')]"
+              },
+              "backendAddressPool": {
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadbalancer1')), '/backendAddressPools/loadBalancerBackEnd')]"
+              },
+              "probe": {
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('loadbalancer1')), '/probes/lbprobe')]"
+              },
+              "protocol": "Tcp",
+              "frontendPort": 80,
+              "backendPort": 80,
+              "idleTimeoutInMinutes": 15
+            },
+            "name": "lbrule"
+          }
+        ],
+        "probes": [
+          {
+            "properties": {
+              "protocol": "Tcp",
+              "port": 80,
+              "intervalInSeconds": 15,
+              "numberOfProbes": 2
+            },
+            "name": "lbprobe"
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[variables('nsgforsubnet1')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+          {
+		     "name" : "rdp_rule",
+            "properties": {
+              "protocol": "Tcp",
+              "sourcePortRange": "3389",
+              "destinationPortRange": "3389",
+              "sourceAddressPrefix": "112.121.48.1/32",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 101,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[variables('nsgforsubnet2')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "first_rule",
+            "properties": {
+              "description": "This is the first rule",
+              "protocol": "Tcp",
+              "sourcePortRange": "80",
+              "destinationPortRange": "80",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 101,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[variables('nsgforsubnet3')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+		
+		   {
+            "name": "lb_rule",
+            "properties": {
+              "description": "This is ssh rule",
+              "protocol": "Tcp",
+              "sourcePortRange": "80",
+              "destinationPortRange": "80",
+              "sourceAddressPrefix": "Internet",
+              "destinationAddressPrefix":"[variables('subnetPrefix3')]",
+              "access": "Allow",
+              "priority": 100,
+              "direction": "Inbound"
+            }
+          },
+          {
+            "name": "first_rule",
+            "properties": {
+              "description": "This is the first rule",
+              "protocol": "Tcp",
+              "sourcePortRange": "80",
+              "destinationPortRange": "80",
+              "sourceAddressPrefix": "*",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 101,
+              "direction": "Inbound"
+            }
+          },
+		  
+		  {
+            "name": "ssh",
+            "properties": {
+              "description": "This is ssh rule",
+              "protocol": "Tcp",
+              "sourcePortRange": "22",
+              "destinationPortRange": "22",
+              "sourceAddressPrefix": "10.0.0.0/24",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 102,
+              "direction": "Inbound"
+            }
+          },
+		  {
+			"name": "lb",
+			"properties": {
+				"description": "This is for public access",
+				"protocol": "*",
+				"sourcePortRange": "80",
+				"destinationPortRange": "80",
+				"sourceAddressPrefix": "AzureLoadBalancer",
+				"destinationAddressPrefix": "*",
+				"access": "Allow",
+				"priority": "103",
+				"direction": "Inbound"
+			}
+		  }
+		  
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[variables('nsgforsubnet4')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+          
+            {
+              "name": "first_rule",
+              "properties": {
+                "description": "This is the first rule",
+                "protocol": "Tcp",
+                "sourcePortRange": "8080",
+                "destinationPortRange": "8080",
+                "sourceAddressPrefix": "10.0.3.0/24",
+                "destinationAddressPrefix": "*",
+                "access": "Allow",
+                "priority": 101,
+                "direction": "Inbound"
+              }
+            },
+			      {
+			   "name": "second_rule",
+              "properties": {
+                "description": "This is the second rule",
+                "protocol": "Tcp",
+                "sourcePortRange": "80",
+                "destinationPortRange": "*",
+                "sourceAddressPrefix": "10.0.3.0/24",
+                "destinationAddressPrefix": "*",
+                "access": "Allow",
+                "priority": 102,
+                "direction": "Inbound"
+              }
+            },
+			      {
+				"name": "third_rule",
+              "properties": {
+                "description": "This is the third rule",
+                "protocol": "Tcp",
+                "sourcePortRange": "80",
+                "destinationPortRange": "80",
+                "sourceAddressPrefix": "10.0.3.0/24",
+                "destinationAddressPrefix": "*",
+                "access": "Allow",
+                "priority": 103,
+                "direction": "Inbound"
+              }
+			      },
+			{
+				"name": "fourth_rule",
+				"properties": {
+					"description": "This is the fourth rule",
+					"protocol": "Tcp",
+					"sourcePortRange": "9443",
+					"destinationPortRange": "9443",
+					"sourceAddressPrefix": "10.0.3.0/24",
+					"destinationAddressPrefix": "*",
+					"access": "Allow",
+					"priority": 104,
+					"direction": "Inbound"
+				}
+			},
+			{
+				"name": "ssh",
+				"properties": {
+				  "description": "This is ssh rule",
+				  "protocol": "Tcp",
+				  "sourcePortRange": "22",
+				  "destinationPortRange": "22",
+				  "sourceAddressPrefix": "10.0.0.0/24",
+				  "destinationAddressPrefix": "*",
+				  "access": "Allow",
+				  "priority": 105,
+				  "direction": "Inbound"
+				}
+			}
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "name": "[variables('nsgforsubnet5')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "first_rule",
+            "properties": {
+              "description": "This is the first rule",
+              "protocol": "Tcp",
+              "sourcePortRange": "9200",
+              "destinationPortRange": "9200",
+              "sourceAddressPrefix": "10.0.4.0/24",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 123,
+              "direction": "Inbound"
+            }
+          },
+		  
+		   {
+            "name": "ssh",
+            "properties": {
+              "description": "This is ssh rule",
+              "protocol": "Tcp",
+              "sourcePortRange": "22",
+              "destinationPortRange": "22",
+              "sourceAddressPrefix": "10.0.0.0/24",
+              "destinationAddressPrefix": "*",
+              "access": "Allow",
+              "priority": 101,
+              "direction": "Inbound"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[variables('virtualMachine1')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "displayName": "[variables('virtualMachine1')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', parameters('jumpserverstorageaccount'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nic1'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('vmSize1')]"
+        },
+        "osProfile": {
+          "computerName": "[variables('virtualMachine1')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('imagePublisherWindows')]",
+            "offer": "[variables('imageOfferWindows')]",
+            "sku": "[parameters('windowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://',parameters('jumpserverstorageaccount'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskNameWindows'),'.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nic1'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[variables('virtualMachine2')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "displayName": "[variables('virtualMachine2')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', parameters('webserverstorageaccount'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nic2'))]",
+        "[concat('Microsoft.Compute/availabilitySets/', variables('availabilitySetName'))]"
+      ],
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets',variables('availabilitySetName'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[variables('vmSizeWeb')]"
+        },
+        "osProfile": {
+          "computerName": "[variables('virtualMachine2')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('imagePublisher')]",
+            "offer": "[variables('imageOfferUbuntu')]",
+            "sku": "[parameters('ubuntuOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://',parameters('webserverstorageaccount'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskNameUbuntu'),'.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nic2'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[variables('virtualMachine2_1')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "displayName": "[variables('virtualMachine2_1')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', parameters('webserverstorageaccount1'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nic21'))]",
+        "[concat('Microsoft.Compute/availabilitySets/', variables('availabilitySetName'))]"
+      ],
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets',variables('availabilitySetName'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[variables('vmSizeWeb')]"
+        },
+        "osProfile": {
+          "computerName": "[variables('virtualMachine2_1')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('imagePublisher')]",
+            "offer": "[variables('imageOfferUbuntu')]",
+            "sku": "[parameters('ubuntuOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://',parameters('webserverstorageaccount1'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskNameUbuntu'),'.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nic21'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[variables('virtualMachine3')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "displayName": "[variables('virtualMachine3')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', parameters('appserverstorageaccount'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nic3'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('vmSize1')]"
+        },
+        "osProfile": {
+          "computerName": "[variables('virtualMachine3')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('imagePublisher')]",
+            "offer": "[variables('imageOfferUbuntu')]",
+            "sku": "[parameters('ubuntuOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://',parameters('appserverstorageaccount'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskNameUbuntu'),'.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nic3'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[variables('virtualMachine3_1')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "displayName": "[variables('virtualMachine3_1')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', parameters('appserverstorageaccount1'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nic31'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('vmSize1')]"
+        },
+        "osProfile": {
+          "computerName": "[variables('virtualMachine3_1')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('imagePublisher')]",
+            "offer": "[variables('imageOfferUbuntu')]",
+            "sku": "[parameters('ubuntuOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://',parameters('appserverstorageaccount1'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskNameUbuntu'),'.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nic31'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[variables('virtualMachine4')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "displayName": "[variables('virtualMachine4')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', parameters('jobserverstorageaccount'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nic4'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('vmSize1')]"
+        },
+        "osProfile": {
+          "computerName": "[variables('virtualMachine4')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('imagePublisher')]",
+            "offer": "[variables('imageOfferUbuntu')]",
+            "sku": "[parameters('ubuntuOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://',parameters('jobserverstorageaccount'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskNameUbuntu'),'.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nic4'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[variables('virtualMachine4_1')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "displayName": "[variables('virtualMachine4_1')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', parameters('jobserverstorageaccount1'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nic41'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('vmSize1')]"
+        },
+        "osProfile": {
+          "computerName": "[variables('virtualMachine4_1')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('imagePublisher')]",
+            "offer": "[variables('imageOfferUbuntu')]",
+            "sku": "[parameters('ubuntuOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://',parameters('jobserverstorageaccount1'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskNameUbuntu'),'.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nic41'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[variables('virtualMachine5')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "displayName": "[variables('virtualMachine5')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', parameters('sparkserverstorageaccount'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nic5'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('vmSize2')]"
+        },
+        "osProfile": {
+          "computerName": "[variables('virtualMachine5')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('imagePublisher')]",
+            "offer": "[variables('imageOfferUbuntu')]",
+            "sku": "[parameters('ubuntuOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://',parameters('sparkserverstorageaccount'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskNameUbuntu'),'.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nic5'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[variables('virtualMachine5_1')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "displayName": "[variables('virtualMachine5_1')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', parameters('sparkserverstorageaccount1'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nic51'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('vmSize2')]"
+        },
+        "osProfile": {
+          "computerName": "[variables('virtualMachine5_1')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('imagePublisher')]",
+            "offer": "[variables('imageOfferUbuntu')]",
+            "sku": "[parameters('ubuntuOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://',parameters('sparkserverstorageaccount1'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskNameUbuntu'),'.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nic51'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[variables('virtualMachine6')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "displayName": "[variables('virtualMachine6')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', parameters('pentserverstorageaccount'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nic6'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('vmSize2')]"
+        },
+        "osProfile": {
+          "computerName": "[variables('virtualMachine6')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('imagePublisher')]",
+            "offer": "[variables('imageOfferUbuntu')]",
+            "sku": "[parameters('ubuntuOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://',parameters('pentserverstorageaccount'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskNameUbuntu'),'.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nic6'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[variables('virtualMachine6_1')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "displayName": "[variables('virtualMachine6_1')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', parameters('pentserverstorageaccount1'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nic61'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('vmSize2')]"
+        },
+        "osProfile": {
+          "computerName": "[variables('virtualMachine6_1')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('imagePublisher')]",
+            "offer": "[variables('imageOfferUbuntu')]",
+            "sku": "[parameters('ubuntuOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://',parameters('pentserverstorageaccount1'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskNameUbuntu'),'.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nic61'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[variables('virtualMachine7')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "displayName": "[variables('virtualMachine7')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', parameters('esstorageaccount'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nic7'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('vmSize1')]"
+        },
+        "osProfile": {
+          "computerName": "[variables('virtualMachine7')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('imagePublisher')]",
+            "offer": "[variables('imageOfferUbuntu')]",
+            "sku": "[parameters('ubuntuOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://',parameters('esstorageaccount'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskNameUbuntu'),'.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nic7'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Compute/virtualMachines",
+      "name": "[variables('virtualMachine7_1')]",
+      "location": "[parameters('location')]",
+      "tags": {
+        "displayName": "[variables('virtualMachine7_1')]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', parameters('esstorageaccount1'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', variables('nic71'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[variables('vmSize1')]"
+        },
+        "osProfile": {
+          "computerName": "[variables('virtualMachine7_1')]",
+          "adminUsername": "[parameters('adminUsername')]",
+          "adminPassword": "[parameters('adminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('imagePublisher')]",
+            "offer": "[variables('imageOfferUbuntu')]",
+            "sku": "[parameters('ubuntuOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "osdisk",
+            "vhd": {
+              "uri": "[concat('http://',parameters('esstorageaccount1'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskNameUbuntu'),'.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nic71'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('virtualMachine2'),'/apachescript')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/',variables('virtualMachine2'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.OSTCExtensions",
+        "type": "CustomScriptForLinux",
+        "typeHandlerVersion": "1.2",
+        "settings": {
+          "fileUris": [
+       "https://raw.githubusercontent.com/PreetiCK/scripts/master/apex/install_apache2.sh"
+          ],
+          "commandToExecute": "sh install_apache2.sh"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('virtualMachine2_1'),'/apachescript')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/',variables('virtualMachine2_1'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.OSTCExtensions",
+        "type": "CustomScriptForLinux",
+        "typeHandlerVersion": "1.2",
+        "settings": {
+          "fileUris": [
+            "https://raw.githubusercontent.com/PreetiCK/scripts/master/apex/install_apache2.sh"
+          ],
+          "commandToExecute": "sh install_apache2.sh"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('virtualMachine3'),'/jvtomcatscript')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/',variables('virtualMachine3'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.OSTCExtensions",
+        "type": "CustomScriptForLinux",
+        "typeHandlerVersion": "1.2",
+        "settings": {
+          "fileUris": [
+            "https://raw.githubusercontent.com/PreetiCK/scripts/master/apex/install_javatomcat.sh"
+          ],
+          "commandToExecute": "sh install_javatomcat.sh"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('virtualMachine3_1'),'/jvtomcatscript')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/',variables('virtualMachine3_1'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.OSTCExtensions",
+        "type": "CustomScriptForLinux",
+        "typeHandlerVersion": "1.2",
+        "settings": {
+          "fileUris": [
+             "https://raw.githubusercontent.com/PreetiCK/scripts/master/apex/install_javatomcat.sh"
+          ],
+          "commandToExecute": "sh install_javatomcat.sh"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('virtualMachine4'),'/jobserverscript')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/',variables('virtualMachine4'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.OSTCExtensions",
+        "type": "CustomScriptForLinux",
+        "typeHandlerVersion": "1.2",
+        "settings": {
+          "fileUris": [
+       "https://raw.githubusercontent.com/PreetiCK/scripts/master/apex/install_jbrun.sh?_sm_au_=i6QTRSR0gqLqgRSJ"    
+          ],
+          "commandToExecute": "sh install_jbrun.sh"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('virtualMachine4_1'),'/jobserverscript')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/',variables('virtualMachine4_1'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.OSTCExtensions",
+        "type": "CustomScriptForLinux",
+        "typeHandlerVersion": "1.2",
+        "settings": {
+          "fileUris": [
+               "https://raw.githubusercontent.com/PreetiCK/scripts/master/apex/install_jbrun.sh?_sm_au_=i6QTRSR0gqLqgRSJ"
+          ],
+          "commandToExecute": "sh install_jbrun.sh"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('virtualMachine5'),'/sparkrscript')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/',variables('virtualMachine5'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.OSTCExtensions",
+        "type": "CustomScriptForLinux",
+        "typeHandlerVersion": "1.2",
+        "settings": {
+          "fileUris": [
+            "https://raw.githubusercontent.com/PreetiCK/scripts/master/apex/install_r.sh"
+          ],
+          "commandToExecute": "sh install_r.sh"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('virtualMachine5_1'),'/sparkrscript')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/',variables('virtualMachine5_1'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.OSTCExtensions",
+        "type": "CustomScriptForLinux",
+        "typeHandlerVersion": "1.2",
+        "settings": {
+          "fileUris": [
+            "https://raw.githubusercontent.com/PreetiCK/scripts/master/apex/install_r.sh"
+          ],
+          "commandToExecute": "sh install_r.sh"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('virtualMachine6'),'/pentahoscript')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/',variables('virtualMachine6'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.OSTCExtensions",
+        "type": "CustomScriptForLinux",
+        "typeHandlerVersion": "1.2",
+        "settings": {
+          "fileUris": [
+            "https://raw.githubusercontent.com/PreetiCK/scripts/master/apex/install_pentaho.sh"
+          ],
+          "commandToExecute": "sh install_pentaho.sh"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('virtualMachine6_1'),'/pentahoscript')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/',variables('virtualMachine6_1'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.OSTCExtensions",
+        "type": "CustomScriptForLinux",
+        "typeHandlerVersion": "1.2",
+        "settings": {
+          "fileUris": [
+            "https://raw.githubusercontent.com/PreetiCK/scripts/master/apex/install_pentaho.sh"
+          ],
+          "commandToExecute": "sh install_pentaho.sh"
+        }
+      }
+    }
+	,
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('virtualMachine7'),'/esearchscript')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/',variables('virtualMachine7'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.OSTCExtensions",
+        "type": "CustomScriptForLinux",
+        "typeHandlerVersion": "1.2",
+        "settings": {
+          "fileUris": [
+           "https://raw.githubusercontent.com/PreetiCK/scripts/master/apex/install_esearch.sh?_sm_au_=i6QTRSR0gqLqgRSJ"
+          ],
+          "commandToExecute": "sh install_esearch.sh"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "name": "[concat(variables('virtualMachine7_1'),'/esearchscript')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[concat('Microsoft.Compute/virtualMachines/',variables('virtualMachine7_1'))]"
+      ],
+      "properties": {
+        "publisher": "Microsoft.OSTCExtensions",
+        "type": "CustomScriptForLinux",
+        "typeHandlerVersion": "1.2",
+        "settings": {
+          "fileUris": [
+           "https://raw.githubusercontent.com/PreetiCK/scripts/master/apex/install_esearch.sh?_sm_au_=i6QTRSR0gqLqgRSJ"
+          ],
+          "commandToExecute": "sh install_esearch.sh"
+        }
+      }
+    }
+  ]
+}

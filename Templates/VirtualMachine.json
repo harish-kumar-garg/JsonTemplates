@@ -1,0 +1,162 @@
+{
+	"properties" : {
+		"template" : {
+			"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+			"contentVersion": "1.0.0.0",
+			"parameters" : {
+				"userName" : {
+					"type" : "string",
+					"defaultValue" : "azureUser"
+				},
+				"password" : {
+					"type" : "secureString",
+					"defaultValue" : "Password@123"
+				},
+				"location" : {
+					"type" : "string",
+					"defaultValue" : "Southeast Asia",
+					"allowedValues" : [
+						"Southeast Asia",
+						"West US",
+						"East US"
+					]
+				},
+				"newStorageAcc" : {
+					"type" : "string",
+					"defaultValue" : "VMstorageaccountthis"
+				},
+				"subnetName" : {
+					"type" : "string",
+					"defaultValue" : "Subnet1"
+				},
+				"ubuntuOSVersion": {
+					"type": "string",
+					"defaultValue": "14.04.2-LTS",
+					"allowedValues": [
+						"12.04.5-LTS",
+						"14.04.2-LTS",
+						"15.04"
+					],
+				},
+				"vnetName" : {
+					"type" : "string",
+					"defaultValue" : "Network1"
+				},
+				
+				"dnsNameForPublicIP": {
+					"type": "string",
+					"defaultValue" : "dnsfordemo"
+				},
+				"vm1" : {
+					"type" : "string",
+					"defaultValue" : "VirtualMachine1"
+				}
+			},
+			"variables" : {
+				"imagePublisher": "Canonical",
+				"imageOffer": "UbuntuServer",
+				"OSDiskName": "osdiskforlinuxvm",
+				"vmSize" : "Basic_A0",
+				"vmStorageAccountContainerName": "vhds",
+				"vnetID" : "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]",
+				"subnetRef": "[concat(variables('vnetID'),'/subnets/', parameters('subnetName'))]",
+				"storageAccountType": "Standard_LRS",
+				"nic1" : "NIC1",
+				"publicIPAddressType" : "Dynamic",
+				"publicIPAddressName" : "mypublicipaddress"
+			},
+			"resources" : [
+				{
+					"type": "Microsoft.Storage/storageAccounts",
+					"name": "[parameters('newStorageAcc')]",
+					"apiVersion": "2015-05-01-preview",
+					"location": "[parameters('location')]",
+					"properties": {
+						"accountType": "[variables('storageAccountType')]"
+					}
+				},
+				{
+					"apiVersion": "2015-05-01-preview",
+					"type": "Microsoft.Network/publicIPAddresses",
+					"name": "[variables('publicIPAddressName')]",
+					"location": "[parameters('location')]",
+					"properties": {
+						"publicIPAllocationMethod": "[variables('publicIPAddressType')]",
+						"dnsSettings": {
+							"domainNameLabel": "[parameters('dnsNameForPublicIP')]"
+						}
+					}
+				},
+				{
+					"apiVersion" : "2015-05-01-preview",
+					"type" : "Microsoft.Network/networkInterfaces",
+					"name" : "[variables('nic1')]",
+					"location" : "[parameters('location')]",
+					"dependsOn" : [
+						"[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddressName'))]"
+					],
+					"properties" : {
+						"ipConfigurations": [
+							{
+								"name": "ipconfig1",
+								"properties": {
+									"privateIPAllocationMethod": "Dynamic",
+									"publicIPAddress": {
+										"id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddressName'))]"
+									},
+									"subnet": {
+										"id": "[variables('subnetRef')]"
+									}
+								}
+							}
+						]
+					}
+				},
+				{
+					"apiVersion" : "2015-05-01-preview",
+					"type" : "Microsoft.Compute/virtualMachines",
+					"name" : "[parameters('vm1')]",
+					"location" : "[parameters('location')]",
+					"dependsOn" : [
+						"[concat('Microsoft.Storage/storageAccounts/', parameters('newStorageAcc'))]",
+						"[concat('Microsoft.Network/networkInterfaces/', variables('nic1'))]"
+					],
+					"properties" : {
+						"hardwareProfile" : {
+							"vmSize" : "[variables('vmSize')]"
+						},
+						"osProfile": {
+							"computerName": "[parameters('vm1')]",
+							"adminUsername": "[parameters('userName')]",
+							"adminPassword": "[parameters('password')]"
+						},
+						"storageProfile" : {
+							"imageReference": {
+								"publisher": "[variables('imagePublisher')]",
+								"offer": "[variables('imageOffer')]",
+								"sku": "[parameters('ubuntuOSVersion')]",
+								"version": "latest"
+							},
+							"osDisk": {
+								"name": "osdisk",
+								"vhd": {
+									"uri": "[concat('http://',parameters('newStorageAcc'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskName'),'.vhd')]"
+								},
+								"caching": "ReadWrite",
+								"createOption": "FromImage"
+							}
+						},
+						"networkProfile": {
+							"networkInterfaces": [
+								{
+									"id": "[resourceId('Microsoft.Network/networkInterfaces', variables('nic1'))]"
+								}
+							]
+						}
+					}
+				}
+			]		
+		},
+		"mode" : "Incremental"
+	}	
+}

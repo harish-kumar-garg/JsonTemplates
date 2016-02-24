@@ -1,0 +1,648 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"location": {
+			"type": "string",
+			"defaultValue" : "Southeast Asia",
+			"allowedValues": [
+				"East US",
+				"West US",
+				"West Europe",
+				"East Asia",
+				"Southeast Asia"
+			],
+		},
+		"addressPrefix": {
+			"type": "string",
+			"defaultValue": "10.0.0.0/16"
+		},
+		"subnetPrefix1": {
+			"type": "string",
+			"defaultValue": "10.0.0.0/24"
+		},
+		"subnetPrefix2": {
+			"type": "string",
+			"defaultValue": "10.0.1.0/24"
+		},
+		"subnetPrefix3": {
+			"type": "string",
+			"defaultValue": "10.0.2.0/24"
+		},
+		"userName" : {
+			"type" : "string"
+		},
+		"password" : {
+			"type" : "secureString"
+		},
+		"nginxSA" : {
+			"type" : "string",
+			"defaultValue" : "NginxSADevops"
+		},
+		"jenkinsSA" : {
+			"type" : "string",
+			"defaultValue" : "JenkinsStorageAccount"
+		},
+		"sonarSA" : {
+			"type" : "string",
+			"defaultValue" : "SonarStorageAccount"
+		},
+		"mysqlSA" : {
+			"type" : "string", 	
+			"defaultValue" : "MySqlStorageAccount"
+		},
+		"dnsName" : {
+			"type" : "string"
+		},
+		"ubuntuOSVersion" : {
+			"type" : "string",
+			"defaultValue" : "14.04.2-LTS",
+			"allowedValues" : [
+				"12.04.5-LTS",
+				"14.04.2-LTS",
+				"15.04"
+			]
+		}
+	},
+	"variables" : {
+		"vnet" : "virtualNetwork",
+		"subnet1" : "NginxSubnet",
+		"subnet2" : "JenkinSonarSubnet",
+		"subnet3" : "DatabaseSubnet",
+		"vnetID" : "[resourceId('Microsoft.Network/virtualNetworks',variables('vnet'))]",
+		"subnetRef1" : "[concat(variables('vnetID'), '/subnets/', variables('subnet1'))]",
+		"subnetRef2" : "[concat(variables('vnetID'), '/subnets/', variables('subnet2'))]",
+		"subnetRef3" : "[concat(variables('vnetID'), '/subnets/', variables('subnet3'))]",
+		"storageAccountType": "Standard_LRS",
+		"nic1" : "nicforNginx",
+		"nic2" : "nicforJenkins",
+		"nic3" : "nicforSonar",
+		"nic4" : "nicforDB",
+		"publicIPAddress" : "ipforNginx",
+		"nsg1" : "nsgforNginx",
+		"nsg2" : "nsgforJenkins",
+		"nsg3" : "nsgforSonar",
+		"nsg4" : "nsgforDB",
+		"vm1" : "Nginx",
+		"vm2" : "Jenkins",
+		"vm3" : "Sonar",
+		"vm4" : "MySQL",
+		"vmSize" : "Standard_D1",
+		"imagePublisher": "Canonical",
+		"imageOffer": "UbuntuServer",
+	    "vmsaContainer": "vhds",
+		"OSDiskName": "osdiskforlinuxsimple"
+	},
+	"resources" : [
+		{
+			"apiVersion" : "2015-05-01-preview",
+			"type" : "Microsoft.Network/virtualNetworks",
+			"name" : "[variables('vnet')]",
+			"location" : "[parameters('location')]",
+			"dependsOn" : [
+				"[concat('Microsoft.Network/networkSecurityGroups/', variables('nsg1'))]",
+				"[concat('Microsoft.Network/networkSecurityGroups/', variables('nsg2'))]",
+				"[concat('Microsoft.Network/networkSecurityGroups/', variables('nsg3'))]",
+				"[concat('Microsoft.Network/networkSecurityGroups/', variables('nsg4'))]",
+			],
+			"properties" : {
+				"addressSpace" : {
+					"addressPrefixes" : [
+						"[parameters('addressPrefix')]"
+					]
+				},
+				"subnets" : [
+					{
+						"name": "[variables('subnet1')]",
+						"properties": {
+							"addressPrefix": "[parameters('subnetPrefix1')]",
+							"networkSecurityGroup": {
+								"id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsg1'))]"
+							}
+						}
+					},
+					{
+						"name": "[variables('subnet2')]",
+						"properties": {
+							"addressPrefix": "[parameters('subnetPrefix2')]",
+							"networkSecurityGroup": {
+								"id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsg2'))]",
+								"id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsg3'))]"
+							}
+						}
+					},
+					{
+						"name" : "[variables('subnet3')]",
+						"properties" : {
+							"addressPrefix" : "[parameters('subnetPrefix3')]",
+							"networkSecurityGroup": {
+								"id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsg4'))]"
+							}
+						}
+					}
+				]
+			}
+		},
+		{
+			"apiVersion" : "2015-05-01-preview",
+			"type" : "Microsoft.Storage/storageAccounts",
+			"name" : "[parameters('nginxSA')]",
+			"location" : "[parameters('location')]",
+			"properties" : {
+				"accountType" : "[variables('storageAccountType')]"
+			}
+		},
+		{
+			"apiVersion" : "2015-05-01-preview",
+			"type" : "Microsoft.Storage/storageAccounts",
+			"name" : "[parameters('jenkinsSA')]",
+			"location" : "[parameters('location')]",
+			"properties" : {
+				"accountType" : "[variables('storageAccountType')]"
+			}
+		},
+		{
+			"apiVersion" : "2015-05-01-preview",
+			"type" : "Microsoft.Storage/storageAccounts",
+			"name" : "[parameters('sonarSA')]",
+			"location" : "[parameters('location')]",
+			"properties" : {
+				"accountType" : "[variables('storageAccountType')]"
+			}
+		},
+		{
+			"apiVersion" : "2015-05-01-preview",
+			"type" : "Microsoft.Storage/storageAccounts",
+			"name" : "[parameters('mysqlSA')]",
+			"location" : "[parameters('location')]",
+			"properties" : {
+				"accountType" : "[variables('storageAccountType')]"
+			}
+		},
+		{
+			"apiVersion": "2015-05-01-preview",
+			"type": "Microsoft.Network/publicIPAddresses",
+			"name": "[variables('publicIPAddress')]",
+			"location": "[parameters('location')]",
+			"properties": {
+				"publicIPAllocationMethod": "dynamic",
+				"dnsSettings": {
+					"domainNameLabel": "[parameters('dnsName')]"
+				}
+			}
+		},
+		{
+			"apiVersion" : "2015-05-01-preview",
+			"type" : "Microsoft.Network/networkInterfaces",
+			"name" : "[variables('nic1')]",
+			"location" : "[parameters('location')]",
+			"dependsOn" : [
+				"[concat('Microsoft.Network/virtualNetworks/', variables('vnet'))]",
+				"[concat('Microsoft.Network/publicIPAddresses/', variables('publicIPAddress'))]"
+			],
+			"properties" : {
+				"ipConfigurations": [
+					{
+						"name": "ipconfig1",
+						"properties": {
+							"privateIPAllocationMethod": "Dynamic",
+							"publicIPAddress": {
+								"id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('publicIPAddress'))]"
+							},
+							"subnet": {
+								"id": "[variables('subnetRef1')]"
+							}
+						}
+					}
+				]
+			}
+		},
+		{
+			"apiVersion" : "2015-05-01-preview",
+			"type" : "Microsoft.Network/networkInterfaces",
+			"name" : "[variables('nic2')]",
+			"location" : "[parameters('location')]",
+			"dependsOn" : [
+				"[concat('Microsoft.Network/virtualNetworks/', variables('vnet'))]"
+			],
+			"properties" : {
+				"ipConfigurations": [
+					{
+						"name": "ipconfig1",
+						"properties": {
+							"privateIPAllocationMethod": "Dynamic",
+							"subnet": {
+								"id": "[variables('subnetRef2')]"
+							}
+						}
+					}
+				]
+			}
+		},
+		{
+			"apiVersion" : "2015-05-01-preview",
+			"type" : "Microsoft.Network/networkInterfaces",
+			"name" : "[variables('nic3')]",
+			"location" : "[parameters('location')]",
+			"dependsOn" : [
+				"[concat('Microsoft.Network/virtualNetworks/', variables('vnet'))]"
+			],
+			"properties" : {
+				"ipConfigurations": [
+					{
+						"name": "ipconfig1",
+						"properties": {
+							"privateIPAllocationMethod": "Dynamic",
+							"subnet": {
+								"id": "[variables('subnetRef2')]"
+							}
+						}
+					}
+				]
+			}
+		},
+		{
+			"apiVersion" : "2015-05-01-preview",
+			"type" : "Microsoft.Network/networkInterfaces",
+			"name" : "[variables('nic4')]",
+			"location" : "[parameters('location')]",
+			"dependsOn" : [
+				"[concat('Microsoft.Network/virtualNetworks/', variables('vnet'))]"
+			],
+			"properties" : {
+				"ipConfigurations": [
+					{
+						"name": "ipconfig1",
+						"properties": {
+							"privateIPAllocationMethod": "Dynamic",
+							"subnet": {
+								"id": "[variables('subnetRef3')]"
+							}
+						}
+					}
+				]
+			}
+		},
+		{
+			"apiVersion": "2015-05-01-preview",
+			"type": "Microsoft.Network/networkSecurityGroups",
+			"name": "[variables('nsg1')]",
+			"location": "[parameters('location')]",
+			"properties": {
+				"securityRules": [
+					{
+						"name" : "Nginx_Rule1",
+						"properties": {
+							"protocol" : "Tcp",
+							"sourcePortRange" : "80",
+							"destinationPortRange" : "8080",
+							"sourceAddressPrefix" : "Internet",
+							"destinationAddressPrefix" : "[parameters('subnetPrefix2')]",
+							"access" : "Allow",
+							"priority": 101,
+							"direction": "Inbound"
+						}
+					},
+					{
+						"name" : "Nginx_Rule2",
+						"properties" : {
+							"protocol" : "Tcp",
+							"sourcePortRange" : "80",
+							"destinationPortRange" : "9000",
+							"sourceAddressPrefix" : "Internet",
+							"destinationAddressPrefix" : "[parameters('subnetPrefix2')]",
+							"access" : "Allow",
+							"priority" : 102,
+							"direction" : "Inbound"
+						}
+					}
+				]
+			}
+		},
+		{
+			"apiVersion": "2015-05-01-preview",
+			"type": "Microsoft.Network/networkSecurityGroups",
+			"name": "[variables('nsg2')]",
+			"location": "[parameters('location')]",
+			"properties": {
+				"securityRules": [
+					{
+						"name" : "Jenkins_Rule",
+						"properties": {
+							"protocol" : "Tcp",
+							"sourcePortRange" : "8080",
+							"destinationPortRange" : "3306",
+							"sourceAddressPrefix" : "[parameters('subnetPrefix1')]",
+							"destinationAddressPrefix" : "[parameters('subnetPrefix3')]",
+							"access" : "Allow",
+							"priority": 101,
+							"direction": "Inbound"
+						}
+					}
+				]
+			}
+		},
+		{
+			"apiVersion": "2015-05-01-preview",
+			"type": "Microsoft.Network/networkSecurityGroups",
+			"name": "[variables('nsg3')]",
+			"location": "[parameters('location')]",
+			"properties": {
+				"securityRules": [
+					{
+						"name" : "Sonar_Rule",
+						"properties": {
+							"protocol" : "Tcp",
+							"sourcePortRange" : "9000",
+							"destinationPortRange" : "3306",
+							"sourceAddressPrefix" : "[parameters('subnetPrefix1')]",
+							"destinationAddressPrefix" : "[parameters('subnetPrefix3')]",
+							"access" : "Allow",
+							"priority": 101,
+							"direction": "Inbound"
+						}
+					}
+				]
+			}
+		},
+		{
+			"apiVersion": "2015-05-01-preview",
+			"type": "Microsoft.Network/networkSecurityGroups",
+			"name": "[variables('nsg4')]",
+			"location": "[parameters('location')]",
+			"properties": {
+				"securityRules": [
+					{
+						"name" : "DB_Rule",
+						"properties": {
+							"protocol" : "Tcp",
+							"sourcePortRange" : "3306",
+							"destinationPortRange" : "*",
+							"sourceAddressPrefix" : "[parameters('subnetPrefix2')]",
+							"destinationAddressPrefix" : "*",
+							"access" : "Allow",
+							"priority": 101,
+							"direction": "Inbound"
+						}
+					}
+				]
+			}
+		},
+		{
+			"apiVersion" : "2015-05-01-preview",
+			"type" : "Microsoft.Compute/virtualMachines",
+			"name" : "[variables('vm1')]",
+			"location" : "[parameters('location')]",
+			"dependsOn" : [
+				"[concat('Microsoft.Network/networkInterfaces/', variables('nic1'))]",
+				"[concat('Microsoft.Network/virtualNetworks/', variables('vnet'))]",
+				"[concat('Microsoft.Storage/storageAccounts/', parameters('nginxSA'))]"
+			],
+			"properties" : {
+				"hardwareProfile" : {
+					"vmSize" : "[variables('vmSize')]"
+				},
+				"osProfile" : {
+					"adminUsername" : "[parameters('userName')]",
+					"adminPassword" : "[parameters('password')]",
+					"computerName" : "[variables('vm1')]"
+				},
+				"storageProfile" : {
+					"imageReference": {
+						"publisher": "[variables('imagePublisher')]",
+						"offer": "[variables('imageOffer')]",
+						"sku": "[parameters('ubuntuOSVersion')]",
+						"version": "latest"
+					},
+					"osDisk": {
+						"name": "osdisk",
+						"vhd": {
+							"uri": "[concat('http://',parameters('nginxSA'),'.blob.core.windows.net/',variables('vmsaContainer'),'/',variables('OSDiskName'),'.vhd')]"
+						},
+						"caching": "ReadWrite",
+						"createOption": "FromImage"
+					}
+				},
+				"networkProfile": {
+					"networkInterfaces": [
+						{
+							"id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nic1'))]"
+						}
+					]                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
+				}
+			}
+		},
+		{
+			"apiVersion" : "2015-05-01-preview",
+			"type" : "Microsoft.Compute/virtualMachines",
+			"name" : "[variables('vm2')]",
+			"location" : "[parameters('location')]",
+			"dependsOn" : [
+				"[concat('Microsoft.Network/networkInterfaces/', variables('nic2'))]",
+				"[concat('Microsoft.Network/virtualNetworks/', variables('vnet'))]",
+				"[concat('Microsoft.Storage/storageAccounts/', parameters('jenkinsSA'))]"
+			],
+			"properties" : {
+				"hardwareProfile" : {
+					"vmSize" : "[variables('vmSize')]"
+				},
+				"osProfile" : {
+					"adminUsername" : "[parameters('userName')]",
+					"adminPassword" : "[parameters('password')]",
+					"computerName" : "[variables('vm2')]"
+				},
+				"storageProfile" : {
+					"imageReference": {
+						"publisher": "[variables('imagePublisher')]",
+						"offer": "[variables('imageOffer')]",
+						"sku": "[parameters('ubuntuOSVersion')]",
+						"version": "latest"
+					},
+					"osDisk": {
+						"name": "osdisk",
+						"vhd": {
+							"uri": "[concat('http://',parameters('jenkinsSA'),'.blob.core.windows.net/',variables('vmsaContainer'),'/',variables('OSDiskName'),'.vhd')]"
+						},
+						"caching": "ReadWrite",
+						"createOption": "FromImage"
+					}
+				},
+				"networkProfile": {
+					"networkInterfaces": [
+						{
+							"id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nic2'))]"
+						}
+					]
+				}
+			}
+		},
+		{
+			"apiVersion" : "2015-05-01-preview",
+			"type" : "Microsoft.Compute/virtualMachines",
+			"name" : "[variables('vm3')]",
+			"location" : "[parameters('location')]",
+			"dependsOn" : [
+				"[concat('Microsoft.Network/networkInterfaces/', variables('nic3'))]",
+				"[concat('Microsoft.Network/virtualNetworks/', variables('vnet'))]",
+				"[concat('Microsoft.Storage/storageAccounts/', parameters('sonarSA'))]"
+			],
+			"properties" : {
+				"hardwareProfile" : {
+					"vmSize" : "[variables('vmSize')]"
+				},
+				"osProfile" : {
+					"adminUsername" : "[parameters('userName')]",
+					"adminPassword" : "[parameters('password')]",
+					"computerName" : "[variables('vm3')]"
+				},
+				"storageProfile" : {
+					"imageReference": {
+						"publisher": "[variables('imagePublisher')]",
+						"offer": "[variables('imageOffer')]",
+						"sku": "[parameters('ubuntuOSVersion')]",
+						"version": "latest"
+					},
+					"osDisk": {
+						"name": "osdisk",
+						"vhd": {
+							"uri": "[concat('http://',parameters('sonarSA'),'.blob.core.windows.net/',variables('vmsaContainer'),'/',variables('OSDiskName'),'.vhd')]"
+						},
+						"caching": "ReadWrite",
+						"createOption": "FromImage"
+					}
+				},
+				"networkProfile": {
+					"networkInterfaces": [
+						{
+							"id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nic3'))]"
+						}
+					]
+				}
+			}
+		},
+		{
+			"apiVersion" : "2015-05-01-preview",
+			"type" : "Microsoft.Compute/virtualMachines",
+			"name" : "[variables('vm4')]",
+			"location" : "[parameters('location')]",
+			"dependsOn" : [
+				"[concat('Microsoft.Network/networkInterfaces/', variables('nic4'))]",
+				"[concat('Microsoft.Network/virtualNetworks/', variables('vnet'))]",
+				"[concat('Microsoft.Storage/storageAccounts/', parameters('mysqlSA'))]"
+			],
+			"properties" : {
+				"hardwareProfile" : {
+					"vmSize" : "[variables('vmSize')]"
+				},
+				"osProfile" : {
+					"adminUsername" : "[parameters('userName')]",
+					"adminPassword" : "[parameters('password')]",
+					"computerName" : "[variables('vm4')]"
+				},
+				"storageProfile" : {
+					"imageReference": {
+						"publisher": "[variables('imagePublisher')]",
+						"offer": "[variables('imageOffer')]",
+						"sku": "[parameters('ubuntuOSVersion')]",
+						"version": "latest"
+					},
+					"osDisk": {
+						"name": "osdisk",
+						"vhd": {
+							"uri": "[concat('http://',parameters('mysqlSA'),'.blob.core.windows.net/',variables('vmsaContainer'),'/',variables('OSDiskName'),'.vhd')]"
+						},
+						"caching": "ReadWrite",
+						"createOption": "FromImage"
+					}
+				},
+				"networkProfile": {
+					"networkInterfaces": [
+						{
+							"id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nic4'))]"
+						}
+					]
+				}
+			}
+		},
+		{
+			"type": "Microsoft.Compute/virtualMachines/extensions",
+			"name": "[concat(variables('vm1'),'/nginxScript')]",
+			"apiVersion": "2015-05-01-preview",
+			"location": "[parameters('location')]",
+			"dependsOn": [
+				"[concat('Microsoft.Compute/virtualMachines/',variables('vm1'))]"
+			],
+			"properties": {
+				"publisher": "Microsoft.OSTCExtensions",
+				"type": "CustomScriptForLinux",
+				"typeHandlerVersion": "1.2",
+				"settings": {
+					"fileUris": [
+						"https://raw.githubusercontent.com/PreetiCK/myscripts/master/nginx.sh?_sm_au_=itV7WQLFFLLDnnqH"
+					],
+					"commandToExecute": "sh nginx.sh"
+				}
+			}
+		},
+		{
+			"type": "Microsoft.Compute/virtualMachines/extensions",
+			"name": "[concat(variables('vm2'),'/jenkinsScript')]",
+			"apiVersion": "2015-05-01-preview",
+			"location": "[parameters('location')]",
+			"dependsOn": [
+				"[concat('Microsoft.Compute/virtualMachines/',variables('vm2'))]"
+			],
+			"properties": {
+				"publisher": "Microsoft.OSTCExtensions",
+				"type": "CustomScriptForLinux",
+				"typeHandlerVersion": "1.2",
+				"settings": {
+					"fileUris": [
+						"https://raw.githubusercontent.com/PreetiCK/myscripts/master/jenkins.sh?_sm_au_=itV7WQLFFLLDnnqH"
+					],
+					"commandToExecute": "sh jenkins.sh"
+				}
+			}
+		},
+		{
+			"type": "Microsoft.Compute/virtualMachines/extensions",
+			"name": "[concat(variables('vm3'),'/sonarScript')]",
+			"apiVersion": "2015-05-01-preview",
+			"location": "[parameters('location')]",
+			"dependsOn": [
+				"[concat('Microsoft.Compute/virtualMachines/',variables('vm3'))]"
+			],
+			"properties": {
+				"publisher": "Microsoft.OSTCExtensions",
+				"type": "CustomScriptForLinux",
+				"typeHandlerVersion": "1.2",
+				"settings": {
+					"fileUris": [
+						"https://raw.githubusercontent.com/PreetiCK/myscripts/master/sonar.sh?_sm_au_=itV7WQLFFLLDnnqH"
+					],
+					"commandToExecute": "sh sonar.sh"
+				}
+			}
+		},
+		{
+			"type": "Microsoft.Compute/virtualMachines/extensions",
+			"name": "[concat(variables('vm4'),'/mysqlScript')]",
+			"apiVersion": "2015-05-01-preview",
+			"location": "[parameters('location')]",
+			"dependsOn": [
+				"[concat('Microsoft.Compute/virtualMachines/',variables('vm4'))]"
+			],
+			"properties": {
+				"publisher": "Microsoft.OSTCExtensions",
+				"type": "CustomScriptForLinux",
+				"typeHandlerVersion": "1.2",
+				"settings": {
+					"fileUris": [
+						"https://raw.githubusercontent.com/PreetiCK/myscripts/master/install-mysql.sh?_sm_au_=itV7WQLFFLLDnnqH"
+					],
+					"commandToExecute": "sh install-mysql.sh"
+				}
+			}
+		}
+	]
+}
