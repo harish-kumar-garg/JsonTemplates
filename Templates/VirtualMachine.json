@@ -5,12 +5,10 @@
 			"contentVersion": "1.0.0.0",
 			"parameters" : {
 				"userName" : {
-					"type" : "string",
-					"defaultValue" : "azureUser"
+					"type" : "string"
 				},
 				"password" : {
-					"type" : "secureString",
-					"defaultValue" : "Password@123"
+					"type" : "secureString"
 				},
 				"location" : {
 					"type" : "string",
@@ -50,6 +48,9 @@
 				"vm1" : {
 					"type" : "string",
 					"defaultValue" : "VirtualMachine1"
+				},
+				"sshKeyData": {
+					 "type": "string"
 				}
 			},
 			"variables" : {
@@ -63,7 +64,8 @@
 				"storageAccountType": "Standard_LRS",
 				"nic1" : "NIC1",
 				"publicIPAddressType" : "Dynamic",
-				"publicIPAddressName" : "mypublicipaddress"
+				"publicIPAddressName" : "mypublicipaddress",
+				"sshKeyPath": "[concat('/home/',parameters('adminUserName'),'/.ssh/authorized_keys')]",
 			},
 			"resources" : [
 				{
