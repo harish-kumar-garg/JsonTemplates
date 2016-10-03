@@ -1,0 +1,714 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": 
+	{
+		"frontEndStorAccName": {
+			"type": "string",
+			"defaultValue" : "app1030linsan"
+		},
+		"winVMStorAccName": {
+			"type": "string",
+			"defaultValue" : "app1030winsan"
+		},
+		"dataVMStorAccName": {
+			"type": "string",
+			"defaultValue" : "data1030san"
+		},
+		"userAdminName": {
+			"type": "string",
+			"defaultValue" : "appUsrAdmin"
+		},
+		"userAdminPassword": {
+			"type": "securestring",
+			"defaultValue" : "dishu@2705#1"
+		},
+		"dnsNameFrontLinux": {
+			"type": "string",
+			"defaultValue" : "frontvmlinux1030936"
+		},
+		"dnsNameWinVM": {
+			"type": "string",
+			"defaultValue" : "frontvm1030win"
+		},
+		"dnsNameDBVM": {
+			"type": "string",
+			"defaultValue" : "datavm1030lin"
+		},
+		"ubuntuOSVersion": {
+			"type": "string",
+			"defaultValue": "14.04.2-LTS",
+			"allowedValues": [
+				"12.04.5-LTS",
+				"14.04.2-LTS",
+				"15.04"
+			]      
+		},
+		"windowsOSVersion": {
+			"type": "string",
+			"defaultValue": "2012-R2-Datacenter",
+			"allowedValues": [
+				"2008-R2-SP1",
+				"2012-Datacenter",
+				"2012-R2-Datacenter"
+			]
+		},
+		"apiVersion": {
+            "type": "string",
+            "defaultValue": "2015-06-15"
+        }
+	},
+	"variables": {
+		"location": "Southeast Asia",
+		"imagePublisher": "Canonical",
+		"imageOffer": "UbuntuServer",
+		"OSDiskName1": "osdskfrontendvm",
+		"OSDiskName2": "osdskwindowsvm",
+		"OSDiskName3": "osdskdatavm",
+		"nicNameFrontEndLinuxVM": "appLin1030VMNic",
+		"nicNameForWinVM": "appWin1030VMNic",
+		"nicNameForDataVM": "dataLin1030VMNic",
+		"addressPrefix": "10.0.0.0/16",
+		"frontEndSubnetName": "appsubnet10",
+		"dataBaseSubnetName": "datasubnet10",
+		"frontEndSubnetPrefix": "10.0.2.0/24",
+		"dataBaseSubnetPrefix": "10.0.4.0/24",
+		"storageAccountType": "Standard_LRS",
+		"linuxVMPublicIPAddressName": "applinux1030PubIP",
+		"winVMPublicIPAddressName": "appWin1030PubIP",
+		"publicIPAddressType": "Dynamic",
+		"vmStorageAccountContainerName": "vhds",
+		"frontEndVMName": "appLinux1030Vm",
+		"windowsVMName": "appwin1030Vm",
+		"dataBaseVMName": "dataLin1030Vm",
+		"vmSize": "Basic_A2",
+		"virtualNetworkName": "app1030Vnet",
+		"vnetID": "[resourceId('Microsoft.Network/virtualNetworks',variables('virtualNetworkName'))]",
+		"frontEndSubnetRef": "[concat(variables('vnetID'), '/subnets/', variables('frontEndSubnetName'))]",
+		"dataBaseSubnetRef": "[concat(variables('vnetID'), '/subnets/', variables('dataBaseSubnetName'))]",
+		"nsgNameForVnet": "nsgAppVNet",
+		"nsgNameForFrontEndSubnet": "nsgAppSubnet",
+		"nsgNameForFrontEndLinuxVM": "nsgAppLinuxVM",
+		"nsgNameForFrontEndWinVM": "nsgAppWindowsVM",
+		"nsgNameForDataSubnet": "nsgDataSubnet"
+	},
+	"resources": [
+		{
+			"apiVersion": "[parameters('apiVersion')]",
+			"type": "Microsoft.Network/networkSecurityGroups",
+			"name": "[variables('nsgNameForVnet')]",
+			"location": "[variables('location')]",
+			"properties": {
+				"securityRules": [
+					{
+						"name": "jenkinsrule",
+						"properties": {
+							"description": "Allow jenkins",
+							"protocol": "Tcp",
+							"sourcePortRange": "*",
+							"destinationPortRange": "8080",
+							"sourceAddressPrefix": "*",
+							"destinationAddressPrefix": "*",
+							"access": "Allow",
+							"priority": 101,
+							"direction": "Inbound"
+						}
+					},				
+					{
+						"name": "sonarrule",
+						"properties": {
+							"description": "Allow sonar",
+							"protocol": "Tcp",
+							"sourcePortRange": "*",
+							"destinationPortRange": "9000",
+							"sourceAddressPrefix": "*",
+							"destinationAddressPrefix": "*",
+							"access": "Allow",
+							"priority": 102,
+							"direction": "Inbound"
+						}
+					},
+					{
+						"name": "sshlocalrules",
+						"properties": {
+							"description": "Allow local",
+							"protocol": "Tcp",
+							"sourcePortRange": "*",
+							"destinationPortRange": "22",
+							"sourceAddressPrefix": "*",
+							"destinationAddressPrefix": "*",
+							"access": "Allow",
+							"priority": 105,
+							"direction": "Inbound"
+						}
+					},
+					{
+						"name" : "RDP_Rules",
+						"properties": {
+							"protocol": "Tcp",
+							"sourcePortRange": "*",
+							"destinationPortRange": "3389",
+							"sourceAddressPrefix": "*",
+							"destinationAddressPrefix": "*",
+							"access": "Allow",
+							"priority": 106,
+							"direction": "Inbound"
+						}		
+					}	
+				]
+			}
+		},
+		{
+			"apiVersion": "[parameters('apiVersion')]",
+			"type": "Microsoft.Network/networkSecurityGroups",
+			"name": "[variables('nsgNameForFrontEndSubnet')]",
+			"location": "[variables('location')]",
+			"properties": {
+				"securityRules": [
+					{
+						"name": "jenkinsrule",
+						"properties": {
+							"description": "Allow jenkins",
+							"protocol": "Tcp",
+							"sourcePortRange": "*",
+							"destinationPortRange": "8080",
+							"sourceAddressPrefix": "*",
+							"destinationAddressPrefix": "*",
+							"access": "Allow",
+							"priority": 101,
+							"direction": "Inbound"
+						}
+					},				
+					{
+						"name": "sonarrule",
+						"properties": {
+							"description": "Allow sonar",
+							"protocol": "Tcp",
+							"sourcePortRange": "*",
+							"destinationPortRange": "9000",
+							"sourceAddressPrefix": "*",
+							"destinationAddressPrefix": "*",
+							"access": "Allow",
+							"priority": 102,
+							"direction": "Inbound"
+						}
+					},
+					{
+						"name": "sshlocalrules",
+						"properties": {
+							"description": "Allow local",
+							"protocol": "Tcp",
+							"sourcePortRange": "*",
+							"destinationPortRange": "22",
+							"sourceAddressPrefix": "*",
+							"destinationAddressPrefix": "*",
+							"access": "Allow",
+							"priority": 105,
+							"direction": "Inbound"
+						}
+					},
+					{
+						"name" : "RDP_Rules",
+						"properties": {
+							"protocol": "Tcp",
+							"sourcePortRange": "*",
+							"destinationPortRange": "3389",
+							"sourceAddressPrefix": "*",
+							"destinationAddressPrefix": "*",
+							"access": "Allow",
+							"priority": 106,
+							"direction": "Inbound"
+						}		
+					}	
+				]
+			}
+		},
+		{
+			"apiVersion": "[parameters('apiVersion')]",
+			"type": "Microsoft.Network/networkSecurityGroups",
+			"name": "[variables('nsgNameForDataSubnet')]",
+			"location": "[variables('location')]",
+			"properties": {
+				"securityRules": [
+					{
+						"name": "mysqlrule",
+						"properties": {
+							"description": "Allow MySQl",
+							"protocol": "Tcp",
+							"sourcePortRange": "*",
+							"destinationPortRange": "3306",
+							"sourceAddressPrefix": "[variables('frontEndSubnetPrefix')]",
+							"destinationAddressPrefix": "[variables('dataBaseSubnetPrefix')]",
+							"access": "Allow",
+							"priority": 103,
+							"direction": "Inbound"
+						}
+					},
+					{
+						"name": "mongorule",
+						"properties": {
+							"description": "Allow Mongo DB",
+							"protocol": "Tcp",
+							"sourcePortRange": "*",
+							"destinationPortRange": "27017",
+							"sourceAddressPrefix": "[variables('frontEndSubnetPrefix')]",
+							"destinationAddressPrefix": "[variables('dataBaseSubnetPrefix')]",
+							"access": "Allow",
+							"priority": 104,
+							"direction": "Inbound"
+						}
+					},
+					{
+						"name": "sshlocalrules",
+						"properties": {
+							"description": "Allow local",
+							"protocol": "Tcp",
+							"sourcePortRange": "*",
+							"destinationPortRange": "22",
+							"sourceAddressPrefix": "[variables('frontEndSubnetPrefix')]",
+							"destinationAddressPrefix": "[variables('dataBaseSubnetPrefix')]",
+							"access": "Allow",
+							"priority": 105,
+							"direction": "Inbound"
+						}
+					}
+				]
+			}
+		},
+		{
+			"apiVersion": "[parameters('apiVersion')]",
+			"type": "Microsoft.Network/networkSecurityGroups",
+			"name": "[variables('nsgNameForFrontEndLinuxVM')]",
+			"location": "[variables('location')]",
+			"properties": {
+				"securityRules": [
+					{
+						"name": "jenkinsrule",
+						"properties": {
+							"description": "Allow jenkins",
+							"protocol": "Tcp",
+							"sourcePortRange": "*",
+							"destinationPortRange": "8080",
+							"sourceAddressPrefix": "*",
+							"destinationAddressPrefix": "*",
+							"access": "Allow",
+							"priority": 101,
+							"direction": "Inbound"
+						}
+					},				
+					{
+						"name": "sonarrule",
+						"properties": {
+							"description": "Allow sonar",
+							"protocol": "Tcp",
+							"sourcePortRange": "*",
+							"destinationPortRange": "9000",
+							"sourceAddressPrefix": "*",
+							"destinationAddressPrefix": "*",
+							"access": "Allow",
+							"priority": 102,
+							"direction": "Inbound"
+						}
+					},
+					{
+						"name": "sshlocalrules",
+						"properties": {
+							"description": "Allow local",
+							"protocol": "Tcp",
+							"sourcePortRange": "*",
+							"destinationPortRange": "22",
+							"sourceAddressPrefix": "*",
+							"destinationAddressPrefix": "*",
+							"access": "Allow",
+							"priority": 105,
+							"direction": "Inbound"
+						}
+					}
+				]
+			}
+		},
+		{
+			"apiVersion": "[parameters('apiVersion')]",
+			"type": "Microsoft.Network/networkSecurityGroups",
+			"name": "[variables('nsgNameForFrontEndWinVM')]",
+			"location": "[variables('location')]",
+			"properties": {
+				"securityRules": [
+					{
+						"name" : "RDP_Rules",
+						"properties": {
+							"protocol": "Tcp",
+							"sourcePortRange": "*",
+							"destinationPortRange": "3389",
+							"sourceAddressPrefix": "*",
+							"destinationAddressPrefix": "*",
+							"access": "Allow",
+							"priority": 106,
+							"direction": "Inbound"
+						}		
+					}	
+				]
+			}
+		},
+		{
+			"type": "Microsoft.Storage/storageAccounts",
+			"name": "[parameters('frontEndStorAccName')]",
+			"apiVersion": "[parameters('apiVersion')]",
+			"location": "[variables('location')]",
+			"properties": {
+				"accountType": "[variables('storageAccountType')]"
+			}
+		},
+		{
+			"type": "Microsoft.Storage/storageAccounts",
+			"name": "[parameters('winVMStorAccName')]",
+			"apiVersion": "[parameters('apiVersion')]",
+			"location": "[variables('location')]",
+			"properties": {
+				"accountType": "[variables('storageAccountType')]"
+			}
+		},
+		{
+			"type": "Microsoft.Storage/storageAccounts",
+			"name": "[parameters('dataVMStorAccName')]",
+			"apiVersion": "[parameters('apiVersion')]",
+			"location": "[variables('location')]",
+			"properties": {
+				"accountType": "[variables('storageAccountType')]"
+			}
+		},
+		{
+			"apiVersion": "[parameters('apiVersion')]",
+			"type": "Microsoft.Network/virtualNetworks",
+			"name": "[variables('virtualNetworkName')]",
+			"location": "[variables('location')]",
+			"dependsOn" : [
+				"[concat('Microsoft.Network/networkSecurityGroups/', variables('nsgNameForVnet'))]"
+			],
+			"properties": {
+				"addressSpace": {
+					"addressPrefixes": [
+						"[variables('addressPrefix')]"
+					]
+				},
+				"subnets": [
+					{
+						"name": "[variables('frontEndSubnetName')]",
+						"properties": {
+							"addressPrefix": "[variables('frontEndSubnetPrefix')]",
+							"networkSecurityGroup": {
+								"id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgNameForFrontEndSubnet'))]"
+							}
+						}
+					},
+					{
+						"name": "[variables('dataBaseSubnetName')]",
+						"properties": {
+							"addressPrefix": "[variables('dataBaseSubnetPrefix')]",
+							"networkSecurityGroup": {
+								"id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgNameForDataSubnet'))]"
+							}
+						}
+					}					
+				]
+			}
+		},
+		{ 
+			"apiVersion": "[parameters('apiVersion')]", 
+			"type": "Microsoft.Network/publicIPAddresses", 
+			"name": "[variables('linuxVMPublicIPAddressName')]", 
+			"location": "[variables('location')]", 
+			"properties": { 
+				"publicIPAllocationMethod": "[variables('publicIPAddressType')]", 
+				"dnsSettings": { 
+					"domainNameLabel": "[parameters('dnsNameFrontLinux')]" 
+				} 
+			} 
+		}, 
+		{ 
+			"apiVersion": "[parameters('apiVersion')]", 
+			"type": "Microsoft.Network/publicIPAddresses", 
+			"name": "[variables('winVMPublicIPAddressName')]", 
+			"location": "[variables('location')]", 
+			"properties": { 
+				"publicIPAllocationMethod": "[variables('publicIPAddressType')]", 
+				"dnsSettings": { 
+					"domainNameLabel": "[parameters('dnsNameWinVM')]" 
+				} 
+			} 
+		},
+		{
+			"apiVersion": "[parameters('apiVersion')]",
+			"type": "Microsoft.Network/networkInterfaces",
+			"name": "[variables('nicNameFrontEndLinuxVM')]",
+			"location": "[variables('location')]",
+			"dependsOn": [
+				"[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]",
+				"[concat('Microsoft.Network/publicIPAddresses/', variables('linuxVMPublicIPAddressName'))]"
+			],
+			"properties": {
+				"ipConfigurations": [
+					{
+						"name": "ipconfig01",
+						"properties": {
+							"publiIPAllocationMethod": "Dynamic",
+							"publicIPAddress": { 
+								"id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('linuxVMPublicIPAddressName'))]" 
+							}, 
+							"privateIPAllocationMethod": "Dynamic",
+							"subnet": {
+								"id": "[variables('frontEndSubnetRef')]"
+							}
+						}
+					}
+				],
+				"networkSecurityGroup": {
+					"id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgNameForFrontEndLinuxVM'))]"
+				}
+			}
+		},
+		{
+			"apiVersion": "[parameters('apiVersion')]",
+			"type": "Microsoft.Network/networkInterfaces",
+			"name": "[variables('nicNameForWinVM')]",
+			"location": "[variables('location')]",
+			"dependsOn": [
+				"[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]",
+				"[concat('Microsoft.Network/publicIPAddresses/', variables('winVMPublicIPAddressName'))]"
+			],
+			"properties": {
+				"ipConfigurations": [
+					{
+						"name": "ipconfig02",
+						"properties": {
+							"publicIPAllocationMethod": "Dynamic",
+							"publicIPAddress": { 
+								"id": "[resourceId('Microsoft.Network/publicIPAddresses',variables('winVMPublicIPAddressName'))]" 
+							}, 
+							"privateIPAllocationMethod": "Dynamic",
+							"subnet": {
+								"id": "[variables('frontEndSubnetRef')]"
+							}
+						}
+					}
+				],
+				"networkSecurityGroup": {
+					"id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgNameForFrontEndWinVM'))]"
+				}
+			}
+		},
+		{
+			"apiVersion": "[parameters('apiVersion')]",
+			"type": "Microsoft.Network/networkInterfaces",
+			"name": "[variables('nicNameForDataVM')]",
+			"location": "[variables('location')]",
+			"dependsOn": [
+				"[concat('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]"
+			],
+			"properties": {
+				"ipConfigurations": [
+					{
+						"name": "ipconfig03",
+						"properties": {
+							"privateIPAllocationMethod": "Static",
+							"privateIpAddress": "10.0.4.8",
+							"subnet": {
+								"id": "[variables('dataBaseSubnetRef')]"
+							}
+						}
+					}
+				],
+				"networkSecurityGroup": {
+					"id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgNameForDataSubnet'))]"
+				}
+			}
+		},
+		{
+			"apiVersion": "2015-06-15",
+			"type": "Microsoft.Compute/virtualMachines",
+			"name": "[variables('frontEndVMName')]",
+			"location": "[variables('location')]",
+			"dependsOn": [
+				"[concat('Microsoft.Storage/storageAccounts/', parameters('frontEndStorAccName'))]",
+				"[concat('Microsoft.Network/networkInterfaces/', variables('nicNameFrontEndLinuxVM'))]"
+			],
+			"properties": {
+				"hardwareProfile": {
+					"vmSize": "[variables('vmSize')]"
+				},
+				"osProfile": {
+					"computerName": "[variables('frontEndVMName')]",
+					"adminUsername": "[parameters('userAdminName')]",
+					"adminPassword": "[parameters('userAdminPassword')]"
+				},
+				"storageProfile": {
+					"imageReference": {
+						"publisher": "[variables('imagePublisher')]",
+						"offer": "[variables('imageOffer')]",
+						"sku": "[parameters('ubuntuOSVersion')]",
+						"version": "latest"
+					},
+					"osDisk": {
+						"name": "osdisk",
+						"vhd": {
+							"uri": "[concat('http://',parameters('frontEndStorAccName'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskName1'),'.vhd')]"
+						},
+						"caching": "ReadWrite",
+						"createOption": "FromImage"
+					}
+				},
+				"networkProfile": {
+					"networkInterfaces": [
+						{
+							"id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicNameFrontEndLinuxVM'))]"
+						}
+					]
+				},
+				"diagnosticsProfile": {
+					"bootDiagnostics": {
+						"enabled": "true",
+						"storageUri": "[concat('http://',parameters('frontEndStorAccName'),'.blob.core.windows.net')]"
+					}
+				}
+			}
+		},
+		{
+			"apiVersion": "2015-06-15",
+			"type": "Microsoft.Compute/virtualMachines",
+			"name": "[variables('windowsVMName')]",
+			"location": "[variables('location')]",
+			"dependsOn": [
+				"[concat('Microsoft.Storage/storageAccounts/', parameters('winVMStorAccName'))]",
+				"[concat('Microsoft.Network/networkInterfaces/', variables('nicNameForWinVM'))]"
+			],
+			"properties": {
+				"hardwareProfile": {
+					"vmSize": "[variables('vmSize')]"
+				},
+				"osProfile": {
+					"computerName": "[variables('windowsVMName')]",
+					"adminUsername": "[parameters('userAdminName')]",
+					"adminPassword": "[parameters('userAdminPassword')]"
+				},
+				"storageProfile": {
+					"imageReference": {
+						"publisher": "MicrosoftWindowsServer",
+						"offer": "WindowsServer",
+						"sku": "[parameters('windowsOSVersion')]",
+						"version": "latest"
+					},
+					"osDisk": {
+						"name": "osdisk",
+						"vhd": {
+							"uri": "[concat('http://',parameters('winVMStorAccName'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskName2'),'.vhd')]"
+						},
+						"caching": "ReadWrite",
+						"createOption": "FromImage"
+					}
+				},
+				"networkProfile": {
+					"networkInterfaces": [
+						{
+							"id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicNameForWinVM'))]"
+						}
+					]
+				},
+				"diagnosticsProfile": {
+					"bootDiagnostics": {
+						"enabled": "true",
+						"storageUri": "[concat('http://',parameters('winVMStorAccName'),'.blob.core.windows.net')]"
+					}
+				}
+			}
+		},
+		{
+			"apiVersion": "2015-06-15",
+			"type": "Microsoft.Compute/virtualMachines",
+			"name": "[variables('dataBaseVMName')]",
+			"location": "[variables('location')]",
+			"dependsOn": [
+				"[concat('Microsoft.Storage/storageAccounts/', parameters('dataVMStorAccName'))]",
+				"[concat('Microsoft.Network/networkInterfaces/', variables('nicNameForDataVM'))]"
+			],
+			"properties": {
+				"hardwareProfile": {
+					"vmSize": "[variables('vmSize')]"
+				},
+				"osProfile": {
+					"computerName": "[variables('dataBaseVMName')]",
+					"adminUsername": "[parameters('userAdminName')]",
+					"adminPassword": "[parameters('userAdminPassword')]"
+				},
+				"storageProfile": {
+					"imageReference": {
+						"publisher": "[variables('imagePublisher')]",
+						"offer": "[variables('imageOffer')]",
+						"sku": "[parameters('ubuntuOSVersion')]",
+						"version": "latest"
+					},
+					"osDisk": {
+						"name": "osdisk",
+						"vhd": {
+							"uri": "[concat('http://',parameters('dataVMStorAccName'),'.blob.core.windows.net/',variables('vmStorageAccountContainerName'),'/',variables('OSDiskName3'),'.vhd')]"
+						},
+						"caching": "ReadWrite",
+						"createOption": "FromImage"
+					}
+				},
+				"networkProfile": {
+					"networkInterfaces": [
+						{
+							"id": "[resourceId('Microsoft.Network/networkInterfaces',variables('nicNameForDataVM'))]"
+						}
+					]
+				},
+				"diagnosticsProfile": {
+					"bootDiagnostics": {
+						"enabled": "true",
+						"storageUri": "[concat('http://',parameters('dataVMStorAccName'),'.blob.core.windows.net')]"
+					}
+				}
+			}
+		},
+		{
+			"type": "Microsoft.Compute/virtualMachines/extensions",
+			"name": "[concat(variables('dataBaseVMName'),'/script')]",
+			"apiVersion": "[parameters('apiVersion')]",
+			"location": "[variables('location')]",
+			"dependsOn": [
+				"[concat('Microsoft.Compute/virtualMachines/', variables('dataBaseVMName'))]"
+			],
+			"properties": {
+				"publisher": "Microsoft.OSTCExtensions",
+				"type": "CustomScriptForLinux",
+				"typeHandlerVersion": "1.2",
+				"settings": {
+					"fileUris": [
+						"https://github.com/harish-kumar-garg/MyShellScripts/blob/master/Scripts/hg-mysql-mongo-instalation.sh"
+					],
+					"commandToExecute": "sh hg-mysql-mongo-instalation.sh"
+				}
+			}
+		},
+		{
+			"type": "Microsoft.Compute/virtualMachines/extensions",
+			"name": "[concat(variables('frontEndVMName'),'/script')]",
+			"apiVersion": "[parameters('apiVersion')]",
+			"location": "[variables('location')]",
+			"dependsOn": [
+				"[concat('Microsoft.Compute/virtualMachines/', variables('frontEndVMName'))]"
+			],
+			"properties": {
+				"publisher": "Microsoft.OSTCExtensions",
+				"type": "CustomScriptForLinux",
+				"typeHandlerVersion": "1.2",
+				"settings": {
+					"fileUris": [
+						"https://raw.githubusercontent.com/harish-kumar-garg/MyShellScripts/master/Scripts/java-jenkins-sonar.sh"
+					],
+					"commandToExecute": "sh java-jenkins-sonar.sh"
+				}
+			}
+		}
+	]
+}
